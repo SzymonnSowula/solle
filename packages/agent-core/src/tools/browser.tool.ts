@@ -1,4 +1,4 @@
-import { Tool, ToolArgs } from '@langchain/core/tools';
+import { StructuredTool } from '@langchain/core/tools';
 import { z } from 'zod';
 
 const BrowserToolInput = z.object({
@@ -10,14 +10,12 @@ const BrowserToolInput = z.object({
   requestId: z.string(),
 });
 
-type BrowserToolInputType = z.infer<typeof BrowserToolInput>;
-
-export class BrowserTool extends Tool {
+export class BrowserTool extends StructuredTool<typeof BrowserToolInput> {
   name = 'browser';
   description = 'Execute browser tasks: search the web, scrape pages, or fill forms. Requires task type and appropriate parameters.';
-  inputSchema = BrowserToolInput;
+  schema = BrowserToolInput;
 
-  async execute(input: ToolArgs<typeof BrowserToolInput>): Promise<unknown> {
+  async _call(input: z.infer<typeof BrowserToolInput>): Promise<unknown> {
     const validated = BrowserToolInput.parse(input);
     const startTime = Date.now();
 

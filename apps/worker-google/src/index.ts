@@ -1,12 +1,12 @@
-import express from 'express';
+import express, { Application } from 'express';
 import { gmailWorker } from './gmail';
 import { calendarWorker } from './calendar';
 
-const app = express();
+const app: Application = express();
 app.use(express.json());
 
 app.post('/gmail', async (req, res) => {
-  const { action, messageId, to, subject, body, threadId, sessionId, requestId } = req.body;
+  const { action, messageId, to, subject, body, threadId, requestId } = req.body;
   const startTime = Date.now();
 
   try {
@@ -54,7 +54,7 @@ app.post('/gmail', async (req, res) => {
 });
 
 app.post('/calendar', async (req, res) => {
-  const { action, eventId, summary, description, startTime, endTime, attendees, sessionId, requestId } = req.body;
+  const { action, eventId, summary, description, startTime, endTime, attendees, requestId } = req.body;
   const startTimeMs = Date.now();
 
   try {

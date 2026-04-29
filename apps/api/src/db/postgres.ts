@@ -1,9 +1,7 @@
-import { FastifyInstance } from 'fastify';
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
 
 export class PostgresDatabase {
   private pool: Pool;
-  private initialized = false;
 
   constructor() {
     const connectionString = process.env.DATABASE_URL || 'postgresql://solli:solli_dev_password@localhost:5432/solli';
@@ -20,7 +18,6 @@ export class PostgresDatabase {
       const client = await this.pool.connect();
       await client.query('SELECT 1');
       client.release();
-      this.initialized = true;
       console.log('PostgreSQL connected successfully');
     } catch (error) {
       console.error('PostgreSQL connection failed:', error);
@@ -42,11 +39,11 @@ export class PostgresDatabase {
     return rows[0] || null;
   }
 
-  async transaction<T>(callback: (client: Pool) => Promise<T>): Promise<T> {
+  async transaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      const result = await callback(this.pool);
+      const result = await callback(client);
       await client.query('COMMIT');
       return result;
     } catch (error) {

@@ -1,4 +1,4 @@
-import { Tool, ToolArgs } from '@langchain/core/tools';
+import { StructuredTool } from '@langchain/core/tools';
 import { z } from 'zod';
 
 const CalendarToolInput = z.object({
@@ -13,14 +13,12 @@ const CalendarToolInput = z.object({
   requestId: z.string(),
 });
 
-type CalendarToolInputType = z.infer<typeof CalendarToolInput>;
-
-export class CalendarTool extends Tool {
+export class CalendarTool extends StructuredTool<typeof CalendarToolInput> {
   name = 'calendar';
   description = 'Interact with Google Calendar: list events, create new events, update existing events, or delete events. Requires action type and appropriate parameters.';
-  inputSchema = CalendarToolInput;
+  schema = CalendarToolInput;
 
-  async execute(input: ToolArgs<typeof CalendarToolInput>): Promise<unknown> {
+  async _call(input: z.infer<typeof CalendarToolInput>): Promise<unknown> {
     const validated = CalendarToolInput.parse(input);
     const startTime = Date.now();
 

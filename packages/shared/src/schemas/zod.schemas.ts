@@ -1,15 +1,17 @@
 import { z } from 'zod';
 
 export const SessionCreateSchema = z.object({
-  userId: z.string().uuid(),
+  userId: z.string().uuid().optional(),
+  input: z.string().min(1),
   metadata: z.record(z.unknown()).optional(),
 });
 
 export const SessionUpdateSchema = z.object({
-  status: z.enum(['active', 'completed', 'failed', 'cancelled']).optional(),
-  intentClassification: z
+  status: z.enum(['created', 'active', 'running', 'completed', 'failed', 'cancelled']).optional(),
+  intent: z
     .enum(['RESEARCH', 'INBOX', 'PLANNING', 'APPLICATION', 'GENERAL'])
     .optional(),
+  summary: z.string().optional(),
   metadata: z.record(z.unknown()).optional(),
 });
 

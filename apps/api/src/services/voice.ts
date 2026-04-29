@@ -1,141 +1,178 @@
 import WebSocket from 'ws';
 
-export interface ElevenLabsConfig {
-  apiKey: string;
-  agentId: string;
-  wsUrl?: string;
+interface ToolCallMessage {
+  type: 'client_tool_call';
+  tool_call_id: string;
+  tool_name: string;
+  parameters: Record<string, unknown>;
 }
 
-export interface VoiceEvent {
-  type: string;
-  data: Record<string, unknown>;
-  timestamp: Date;
-}
+export class VoiceProxyService {
+  private connections = new Map<string, { client: WebSocket; elevenLabs: WebSocket }>();
 
-export class VoiceService {
-  private connections: Map<string, WebSocket> = new Map();
-  private eventListeners: Map<string, ((event: VoiceEvent) => void)[]> = new Map();
-  private config: ElevenLabsConfig;
+  async createConnection(
+    sessionId: string,
+    clientSocket: WebSocket,
+    apiKey: string,
+    agentId: string
+  ): Promise<void> {
+    const elevenLabsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${agentId}`;
+    const elevenLabsSocket = new WebSocket(elevenLabsUrl, {
+      headers: {
+        'xi-api-key': apiKey,
+      },
+    });
 
-  constructor(config: ElevenLabsConfig) {
-    this.config = {
-      wsUrl: 'wss://api.elevenlabs.io/v1/agent/stream',
-      ...config,
-    };
-  }
+    this.connections.set(sessionId, { client: clientSocket, elevenLabs: elevenLabsSocket });
 
-  async connect(sessionId: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const wsUrl = `${this.config.wsUrl}?agent_id=${this.config.agentId}`;
-      const ws = new WebSocket(wsUrl, {
-        headers: {
-          'xi-api-key': this.config.apiKey,
-        },
-      });
+    // Forward ElevenLabs -> Client
+    elevenLabsSocket.on('open', () => {
+      console.log(`[Voice] ElevenLabs connected for session ${sessionId}`);
+      clientSocket.send(JSON.stringify({ type: 'connected', sessionId }));
+    });
 
-      ws.on('open', () => {
-        this.connections.set(sessionId, ws);
-        this.emit(sessionId, {
-          type: 'connected',
-          data: { sessionId },
-          timestamp: new Date(),
-        });
-        resolve();
-      });
+    elevenLabsSocket.on('message', async (data) => {
+      try {
+        const message = JSON.parse(data.toString()) as ToolCallMessage | Record<string, unknown>;
 
-      ws.on('message', (data) => {
-        try {
-          const parsed = JSON.parse(data.toString());
-          this.emit(sessionId, {
-            type: parsed.type || 'unknown',
-            data: parsed,
-            timestamp: new Date(),
-          });
-        } catch {
-          console.error('Failed to parse WebSocket message');
+        if (message.type === 'client_tool_call') {
+          const toolCall = message as ToolCallMessage;
+          console.log(`[Voice] Tool call intercepted: ${toolCall.tool_name}`);
+
+          try {
+            const result = await this.handleToolCall(sessionId, toolCall);
+            elevenLabsSocket.send(
+              JSON.stringify({
+                type: 'client_tool_result',
+                tool_call_id: toolCall.tool_call_id,
+                result,
+              })
+            );
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            elevenLabsSocket.send(
+              JSON.stringify({
+                type: 'client_tool_result',
+                tool_call_id: toolCall.tool_call_id,
+                error: errorMessage,
+              })
+            );
+          }
+          return;
         }
-      });
 
-      ws.on('error', (error) => {
-        this.emit(sessionId, {
-          type: 'error',
-          data: { error: error.message },
-          timestamp: new Date(),
-        });
-        reject(error);
-      });
+        // Forward all other messages to client
+        if (clientSocket.readyState === WebSocket.OPEN) {
+          clientSocket.send(data);
+        }
+      } catch {
+        // Binary audio or non-JSON — forward as-is
+        if (clientSocket.readyState === WebSocket.OPEN) {
+          clientSocket.send(data);
+        }
+      }
+    });
 
-      ws.on('close', () => {
-        this.connections.delete(sessionId);
-        this.emit(sessionId, {
-          type: 'disconnected',
-          data: { sessionId },
-          timestamp: new Date(),
-        });
-      });
+    elevenLabsSocket.on('error', (error) => {
+      console.error(`[Voice] ElevenLabs error for session ${sessionId}:`, error.message);
+      if (clientSocket.readyState === WebSocket.OPEN) {
+        clientSocket.send(JSON.stringify({ type: 'error', message: error.message }));
+      }
+    });
+
+    elevenLabsSocket.on('close', () => {
+      console.log(`[Voice] ElevenLabs disconnected for session ${sessionId}`);
+      this.connections.delete(sessionId);
+      if (clientSocket.readyState === WebSocket.OPEN) {
+        clientSocket.close();
+      }
+    });
+
+    // Forward Client -> ElevenLabs
+    clientSocket.on('message', (data) => {
+      if (elevenLabsSocket.readyState === WebSocket.OPEN) {
+        elevenLabsSocket.send(data);
+      }
+    });
+
+    clientSocket.on('close', () => {
+      console.log(`[Voice] Client disconnected for session ${sessionId}`);
+      this.connections.delete(sessionId);
+      if (elevenLabsSocket.readyState === WebSocket.OPEN) {
+        elevenLabsSocket.close();
+      }
     });
   }
 
-  async disconnect(sessionId: string): Promise<void> {
-    const ws = this.connections.get(sessionId);
-    if (ws) {
-      ws.close();
+  disconnect(sessionId: string): void {
+    const conn = this.connections.get(sessionId);
+    if (conn) {
+      conn.elevenLabs.close();
+      conn.client.close();
       this.connections.delete(sessionId);
     }
   }
 
-  sendAudio(sessionId: string, audioData: Buffer): void {
-    const ws = this.connections.get(sessionId);
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(audioData);
-    }
-  }
-
-  sendText(sessionId: string, text: string): void {
-    const ws = this.connections.get(sessionId);
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(
-        JSON.stringify({
-          type: 'text',
-          data: text,
-        })
-      );
-    }
-  }
-
-  on(
+  private async handleToolCall(
     sessionId: string,
-    callback: (event: VoiceEvent) => void
-  ): () => void {
-    if (!this.eventListeners.has(sessionId)) {
-      this.eventListeners.set(sessionId, []);
-    }
-    this.eventListeners.get(sessionId)!.push(callback);
+    toolCall: ToolCallMessage
+  ): Promise<unknown> {
+    const { tool_name, parameters } = toolCall;
+    const baseUrl = `http://localhost:${process.env.API_PORT || '3001'}`;
 
-    return () => {
-      const listeners = this.eventListeners.get(sessionId);
-      if (listeners) {
-        const index = listeners.indexOf(callback);
-        if (index > -1) {
-          listeners.splice(index, 1);
-        }
+    switch (tool_name) {
+      case 'start_session': {
+        const intent = (parameters.intent as string) || 'general';
+        const res = await fetch(`${baseUrl}/api/sessions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input: intent, userId: 'voice-user' }),
+        });
+        const data = (await res.json()) as { sessionId: string };
+        await fetch(`${baseUrl}/api/sessions/${data.sessionId}/run`, { method: 'POST' });
+        return { sessionId: data.sessionId, status: 'started' };
       }
-    };
-  }
 
-  private emit(sessionId: string, event: VoiceEvent): void {
-    const listeners = this.eventListeners.get(sessionId);
-    if (listeners) {
-      listeners.forEach((callback) => callback(event));
+      case 'get_session_status': {
+        const targetSessionId = (parameters.sessionId as string) || sessionId;
+        const res = await fetch(`${baseUrl}/api/sessions/${targetSessionId}`);
+        return await res.json();
+      }
+
+      case 'get_session_events': {
+        const targetSessionId = (parameters.sessionId as string) || sessionId;
+        const res = await fetch(`${baseUrl}/api/sessions/${targetSessionId}/events`);
+        return await res.json();
+      }
+
+      case 'send_message': {
+        const targetSessionId = (parameters.sessionId as string) || sessionId;
+        const message = parameters.message as string;
+        const res = await fetch(`${baseUrl}/api/sessions/${targetSessionId}/message`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message }),
+        });
+        return await res.json();
+      }
+
+      case 'approve_action': {
+        const res = await fetch(`${baseUrl}/api/agents/approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: parameters.sessionId || sessionId,
+            approvalId: parameters.approvalId,
+            approved: parameters.approved,
+          }),
+        });
+        return await res.json();
+      }
+
+      default:
+        return { error: `Unknown tool: ${tool_name}` };
     }
-  }
-
-  isConnected(sessionId: string): boolean {
-    return this.connections.has(sessionId);
   }
 }
 
-export const voiceService = new VoiceService({
-  apiKey: process.env.ELEVENLABS_API_KEY || '',
-  agentId: process.env.ELEVENLABS_AGENT_ID || '',
-});
+export const voiceProxyService = new VoiceProxyService();

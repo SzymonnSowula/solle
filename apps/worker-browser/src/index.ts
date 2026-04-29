@@ -1,7 +1,7 @@
-import express from 'express';
+import express, { Express } from 'express';
 import { handleTask } from './tasks';
 
-const app = express();
+const app: Express = express();
 app.use(express.json());
 
 app.post('/tasks', handleTask);

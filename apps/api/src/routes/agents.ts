@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { runSession } from '@solli/agent-core';
+import { postgresSessionStore } from '../services/session-store';
 
 export async function agentsRoutes(fastify: FastifyInstance) {
   fastify.post('/trigger', async (request, reply) => {
@@ -15,7 +16,11 @@ export async function agentsRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      const result = await runSession(body.sessionId, body.userIntent);
+      const db = fastify.db;
+      const result = await runSession(body.sessionId, body.userIntent, {
+        store: postgresSessionStore,
+        pool: db.getPool(),
+      });
 
       return {
         success: true,
@@ -45,15 +50,18 @@ export async function agentsRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      const orchestrator = fastify.orchestrator;
-      await orchestrator.handleApproval(
-        body.sessionId,
-        body.approvalId,
-        body.approved,
-        body.notes
-      );
+      const db = fastify.db;
+      const result = await runSession(body.sessionId, '', {
+        store: postgresSessionStore,
+        pool: db.getPool(),
+        resumeConfig: {
+          approvalId: body.approvalId,
+          approved: body.approved,
+          additionalArgs: body.notes ? { notes: body.notes } : undefined,
+        },
+      });
 
-      return { success: true };
+      return { success: true, result };
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send({
@@ -67,14 +75,21 @@ export async function agentsRoutes(fastify: FastifyInstance) {
     const { sessionId } = request.params as { sessionId: string };
 
     try {
-      const orchestrator = fastify.orchestrator;
-      const state = await orchestrator.getSessionState(sessionId);
+      const db = fastify.db;
+      // Get latest checkpoint for the session
+      const checkpoint = await db.queryOne(
+        'SELECT checkpoint FROM checkpoints WHERE thread_id = $1 ORDER BY checkpoint_id DESC LIMIT 1',
+        [sessionId]
+      );
 
-      if (!state) {
+      if (!checkpoint) {
         return reply.status(404).send({ error: 'Session state not found' });
       }
 
-      return state;
+      return {
+        sessionId,
+        checkpoint: checkpoint.checkpoint,
+      };
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send({

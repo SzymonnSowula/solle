@@ -3,7 +3,6 @@ import Redis from 'ioredis';
 export class RedisDatabase {
   private client: Redis;
   private subscriber: Redis;
-  private initialized = false;
 
   constructor() {
     const redisUrl = process.env.REDIS_URL || 'redis://default:solli_dev_password@localhost:6379';
@@ -15,7 +14,6 @@ export class RedisDatabase {
     try {
       await this.client.ping();
       await this.subscriber.ping();
-      this.initialized = true;
       console.log('Redis connected successfully');
     } catch (error) {
       console.error('Redis connection failed:', error);

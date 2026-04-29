@@ -4,6 +4,7 @@ import { taskRunner } from '../runner';
 export interface TaskRequest {
   task: 'search' | 'scrape' | 'fill_form';
   query?: string;
+  limit?: number;
   url?: string;
   formData?: Record<string, string>;
   sessionId: string;
@@ -35,15 +36,23 @@ export async function handleTask(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const result = await taskRunner.executeTask(
-      {
-        type: body.task,
-        query: body.query,
-        url: body.url,
-        formData: body.formData,
-      },
-      body.sessionId
-    );
+    let task: any;
+    switch (body.task) {
+      case 'search':
+        task = { type: 'search', query: body.query!, limit: body.limit };
+        break;
+      case 'scrape':
+        task = { type: 'scrape', url: body.url! };
+        break;
+      case 'fill_form':
+        task = { type: 'fill_form', url: body.url!, formData: body.formData! };
+        break;
+      default:
+        res.status(400).json({ error: 'Invalid task type' });
+        return;
+    }
+
+    const result = await taskRunner.executeTask(task, body.sessionId);
 
     res.json({
       success: true,

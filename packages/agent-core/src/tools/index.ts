@@ -22,7 +22,7 @@ export abstract class BaseSolliTool extends Tool {
 }
 
 export function createToolDescription(
-  name: string,
+  _name: string,
   description: string,
   parameters: Record<string, string>
 ): string {

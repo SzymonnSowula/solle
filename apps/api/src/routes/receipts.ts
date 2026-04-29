@@ -66,7 +66,7 @@ export async function receiptsRoutes(fastify: FastifyInstance) {
     return receipt;
   });
 
-  fastify.get('/session/:sessionId', async (request, reply) => {
+  fastify.get('/session/:sessionId', async (request) => {
     const { sessionId } = request.params as { sessionId: string };
 
     const db = fastify.db;
@@ -78,7 +78,7 @@ export async function receiptsRoutes(fastify: FastifyInstance) {
     return receipts;
   });
 
-  fastify.patch('/:id/confirm', async (request, reply) => {
+  fastify.patch('/:id/confirm', async (request) => {
     const { id } = request.params as { id: string };
     const body = request.body as {
       onChainTxid?: string;
@@ -114,5 +114,26 @@ export async function receiptsRoutes(fastify: FastifyInstance) {
     );
 
     return receipt;
+  });
+
+  fastify.get('/:id/verify', async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const db = fastify.db;
+    const receipt = await db.queryOne<{ on_chain_txid?: string }>(
+      'SELECT on_chain_txid FROM receipts WHERE id = $1',
+      [id]
+    );
+
+    if (!receipt) {
+      return reply.status(404).send({ error: 'Receipt not found' });
+    }
+
+    if (!receipt.on_chain_txid) {
+      return reply.status(400).send({ error: 'Receipt has no on-chain txid' });
+    }
+
+    const result = await fastify.receipts.verifyOnChain(receipt.on_chain_txid);
+    return result;
   });
 }

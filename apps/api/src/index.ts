@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import { sessionsRoutes } from './routes/sessions';
 import { agentsRoutes } from './routes/agents';
 import { receiptsRoutes } from './routes/receipts';
+import { voiceRoutes } from './routes/voice';
 import { orchestratorService } from './services/orchestrator';
 import { voiceService } from './services/voice';
 import { receiptService } from './services/receipt.service';
@@ -45,6 +46,7 @@ export async function buildApp() {
   await fastify.register(sessionsRoutes, { prefix: '/api/sessions' });
   await fastify.register(agentsRoutes, { prefix: '/api/agents' });
   await fastify.register(receiptsRoutes, { prefix: '/api/receipts' });
+  await fastify.register(voiceRoutes, { prefix: '/api' });
 
   return fastify;
 }

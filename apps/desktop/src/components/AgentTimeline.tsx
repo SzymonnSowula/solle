@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 interface TimelineEvent {
   id: string;
@@ -13,7 +13,7 @@ interface AgentTimelineProps {
 }
 
 function AgentTimeline({ events }: AgentTimelineProps) {
-  const getEventIcon(eventType: string): string {
+  const getEventIcon = (eventType: string): string => {
     switch (eventType) {
       case 'started':
         return '▶';
@@ -34,7 +34,7 @@ function AgentTimeline({ events }: AgentTimelineProps) {
     }
   }
 
-  const getEventClass(eventType: string): string {
+  const getEventClass = (eventType: string): string => {
     switch (eventType) {
       case 'started':
       case 'tool_result':
@@ -50,7 +50,7 @@ function AgentTimeline({ events }: AgentTimelineProps) {
     }
   }
 
-  const formatTime(date: Date): string {
+  const formatTime = (date: Date): string => {
     return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
@@ -58,7 +58,7 @@ function AgentTimeline({ events }: AgentTimelineProps) {
     });
   }
 
-  const formatAgentName(name: string): string {
+  const formatAgentName = (name: string): string => {
     return name.charAt(0).toUpperCase() + name.slice(1);
   }
 

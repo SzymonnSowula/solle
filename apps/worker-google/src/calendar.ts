@@ -31,7 +31,7 @@ export class CalendarWorker {
   private initialized = false;
 
   constructor() {
-    this.calendar = google.calendar({ version: 'v1', auth: oauth2Client });
+    this.calendar = google.calendar({ version: 'v3', auth: oauth2Client });
   }
 
   async listEvents(
@@ -56,7 +56,7 @@ export class CalendarWorker {
       description: event.description || '',
       startTime: new Date(event.start?.dateTime || event.start?.date || ''),
       endTime: new Date(event.end?.dateTime || event.end?.date || ''),
-      attendees: event.attendees?.map((a) => a.email || '') || [],
+      attendees: event.attendees?.map((a: { email?: string | null }) => a.email || '') || [],
       location: event.location || '',
       status: (event.status as 'confirmed' | 'tentative' | 'cancelled') || 'confirmed',
     }));
@@ -90,7 +90,7 @@ export class CalendarWorker {
       description: event.description || '',
       startTime: new Date(event.start?.dateTime || event.start?.date || ''),
       endTime: new Date(event.end?.dateTime || event.end?.date || ''),
-      attendees: event.attendees?.map((a) => a.email || '') || [],
+      attendees: event.attendees?.map((a: { email?: string | null }) => a.email || '') || [],
       location: event.location || '',
       status: (event.status as 'confirmed' | 'tentative' | 'cancelled') || 'confirmed',
     };
@@ -104,10 +104,18 @@ export class CalendarWorker {
       throw new Error('Calendar worker not initialized');
     }
 
+    const requestBody: Record<string, unknown> = {};
+    if (updates.summary !== undefined) requestBody.summary = updates.summary;
+    if (updates.description !== undefined) requestBody.description = updates.description;
+    if (updates.startTime !== undefined) requestBody.start = { dateTime: updates.startTime };
+    if (updates.endTime !== undefined) requestBody.end = { dateTime: updates.endTime };
+    if (updates.location !== undefined) requestBody.location = updates.location;
+    if (updates.attendees !== undefined) requestBody.attendees = updates.attendees.map((email: string) => ({ email }));
+
     const response = await this.calendar.events.patch({
       calendarId: 'primary',
       eventId,
-      requestBody: updates,
+      requestBody,
     });
 
     const event = response.data;
@@ -117,7 +125,7 @@ export class CalendarWorker {
       description: event.description || '',
       startTime: new Date(event.start?.dateTime || event.start?.date || ''),
       endTime: new Date(event.end?.dateTime || event.end?.date || ''),
-      attendees: event.attendees?.map((a) => a.email || '') || [],
+      attendees: event.attendees?.map((a: { email?: string | null }) => a.email || '') || [],
       location: event.location || '',
       status: (event.status as 'confirmed' | 'tentative' | 'cancelled') || 'confirmed',
     };

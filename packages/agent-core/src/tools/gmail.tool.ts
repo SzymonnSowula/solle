@@ -1,4 +1,4 @@
-import { Tool, ToolArgs } from '@langchain/core/tools';
+import { StructuredTool } from '@langchain/core/tools';
 import { z } from 'zod';
 
 const GmailToolInput = z.object({
@@ -12,14 +12,12 @@ const GmailToolInput = z.object({
   requestId: z.string(),
 });
 
-type GmailToolInputType = z.infer<typeof GmailToolInput>;
-
-export class GmailTool extends Tool {
+export class GmailTool extends StructuredTool<typeof GmailToolInput> {
   name = 'gmail';
   description = 'Interact with Gmail: read messages, draft new emails, send emails, or list recent messages. Requires action type and appropriate parameters.';
-  inputSchema = GmailToolInput;
+  schema = GmailToolInput;
 
-  async execute(input: ToolArgs<typeof GmailToolInput>): Promise<unknown> {
+  async _call(input: z.infer<typeof GmailToolInput>): Promise<unknown> {
     const validated = GmailToolInput.parse(input);
     const startTime = Date.now();
 

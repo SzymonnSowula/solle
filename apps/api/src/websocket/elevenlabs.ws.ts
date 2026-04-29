@@ -1,12 +1,11 @@
 import WebSocket from 'ws';
-import { IncomingMessage } from 'http';
 
 export interface ElevenLabsMessage {
   type: string;
   [key: string]: unknown;
 }
 
-export type EventHandler = (event: ElevenLabsMessage) => void;
+export type EventHandler = (event: Record<string, unknown>) => void;
 
 export class ElevenLabsWebSocket {
   private ws: WebSocket | null = null;
@@ -38,7 +37,7 @@ export class ElevenLabsWebSocket {
 
       this.ws.on('open', () => {
         this.reconnectAttempts = 0;
-        this.emit('session_start', { sessionId });
+        this.emit('session_start', { type: 'session_start', sessionId });
         resolve();
       });
 
@@ -52,12 +51,12 @@ export class ElevenLabsWebSocket {
       });
 
       this.ws.on('error', (error) => {
-        this.emit('error', { error: error.message });
+        this.emit('error', { type: 'error', error: error.message });
         reject(error);
       });
 
       this.ws.on('close', () => {
-        this.emit('session_end', { sessionId });
+        this.emit('session_end', { type: 'session_end', sessionId });
         this.attemptReconnect();
       });
     });
@@ -130,7 +129,7 @@ export class ElevenLabsWebSocket {
     }
   }
 
-  private emit(eventType: string, data: ElevenLabsMessage): void {
+  private emit(eventType: string, data: Record<string, unknown>): void {
     const handlers = this.eventHandlers.get(eventType);
     if (handlers) {
       handlers.forEach((handler) => handler(data));
@@ -146,7 +145,7 @@ export class ElevenLabsWebSocket {
       const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
 
       setTimeout(() => {
-        this.connect(this.session!).catch((error) => {
+        this.connect(this.sessionId!).catch((error) => {
           console.error('Reconnection failed:', error);
         });
       }, delay);

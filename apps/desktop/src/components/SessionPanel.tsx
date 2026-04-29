@@ -1,6 +1,5 @@
-import React from 'react';
-import { AgentTimeline } from './AgentTimeline';
-import { SummaryCard } from './SummaryCard';
+import AgentTimeline from './AgentTimeline';
+import SummaryCard from './SummaryCard';
 
 interface SessionPanelProps {
   session: {
