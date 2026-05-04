@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     ended_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    estimated_cost_sol REAL DEFAULT 0,
+    actual_cost_sol REAL DEFAULT 0,
     metadata JSONB DEFAULT '{}'
 );
 
@@ -50,6 +52,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     started_at TIMESTAMP WITH TIME ZONE,
     completed_at TIMESTAMP WITH TIME ZONE,
     error_message TEXT,
+    cost_sol REAL DEFAULT 0,
     metadata JSONB DEFAULT '{}'
 );
 

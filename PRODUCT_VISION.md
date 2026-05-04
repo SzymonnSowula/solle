@@ -25,11 +25,13 @@ Solana/x402 jest niewidoczna w UI. Służy do:
 
 ## Architektura
 ```
-User (voice/desktop)
-  ↔ ElevenLabs Conversational AI (WebSocket via API proxy)
-    ↔ [function calls] → API Fastify (/api/tools/*)
-      ↔ LangGraph (agent-core) — wykonuje workflow, trzyma stan w Postgres
-        ↔ Workers (browser, google)
-      ↔ Postgres — checkpoints, sessions, events, tasks, receipts
-      ↔ Solana Devnet — receipts on-chain (async)
+User (voice/web)
+  ↔ Next.js App Router (frontend + API routes)
+    ↔ ElevenLabs Conversational AI (WebSocket via API proxy)
+      ↔ [function calls] → Route Handlers (/api/*)
+        ↔ LangGraph (agent-core) — wykonuje workflow, trzyma stan w Postgres
+          ↔ Workers (browser, google)
+        ↔ Postgres — checkpoints, sessions, events, tasks, receipts
+        ↔ Redis — transient state, cache, pub/sub
+        ↔ Solana Devnet — receipts on-chain (async)
 ```

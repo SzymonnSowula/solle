@@ -1,18 +1,17 @@
 # Solli - Voice-Native Session Operator
 
-A production-ready monorepo for a voice-native desktop application with multi-agent orchestration, powered by Tauri, React, Fastify, and LangGraph.
+A production-ready monorepo for a voice-native web application with multi-agent orchestration, powered by Next.js, React, and a custom async agent pipeline.
 
 ## Architecture Overview
 
 ```
 solli/
 ├── apps/
-│   ├── desktop/           # Tauri + React 18 desktop app
-│   ├── api/              # Fastify backend API
+│   ├── web/              # Next.js fullstack web app
 │   ├── worker-browser/   # Playwright browser automation worker
 │   └── worker-google/    # Google APIs (Gmail/Calendar) worker
 ├── packages/
-│   ├── agent-core/       # LangGraph multi-agent orchestration
+│   ├── agent-core/       # LangGraph multi-agent orchestration (legacy)
 │   ├── shared/           # Shared types and Zod schemas
 │   └── blockchain/        # Solana/x402 payment stubs
 └── docker/               # PostgreSQL + Redis configuration
@@ -20,9 +19,8 @@ solli/
 
 ## Tech Stack
 
-- **Desktop**: Tauri 2 + React 18 + TypeScript
-- **Backend**: Fastify + TypeScript
-- **Orchestration**: LangGraph (TypeScript)
+- **Frontend & Backend**: Next.js App Router + React 18 + TypeScript
+- **Orchestration**: Custom async pipeline (coordinator → research → summary)
 - **Voice**: ElevenLabs WebSocket API
 - **Browser Automation**: Playwright
 - **APIs**: Google Gmail & Calendar
@@ -32,12 +30,12 @@ solli/
 
 ## Agent System
 
-The multi-agent orchestration (`packages/agent-core/`) routes user intent through specialized agents:
+The multi-agent orchestration (in `apps/web/src/lib/agents/`) routes user intent through specialized agents:
 
 1. **Coordinator** - Classifies user intent (RESEARCH | INBOX | PLANNING | APPLICATION | GENERAL)
 2. **Research** - Web search and information gathering
-3. **Inbox** - Email management via Gmail
-4. **Planning** - Calendar and scheduling via Google Calendar
+3. **Inbox** - Email management via Gmail (stub)
+4. **Planning** - Calendar and scheduling via Google Calendar (stub)
 5. **Summary** - Session summary generation
 
 ## Prerequisites
@@ -45,7 +43,6 @@ The multi-agent orchestration (`packages/agent-core/`) routes user intent throug
 - Node.js 20+
 - pnpm 8+
 - Docker & Docker Compose
-- Rust (for Tauri desktop app)
 
 ## Quick Start
 
@@ -81,12 +78,11 @@ docker-compose up -d
 ```bash
 # Start all apps in development mode
 pnpm dev
-ta
+
 # Or start individual apps
-pnpm --filter @solli/api dev
+pnpm --filter @solli/web dev
 pnpm --filter @solli/worker-browser dev
 pnpm --filter @solli/worker-google dev
-pnpm --filter @solli/desktop dev
 ```
 
 ### 5. Run the MVP Vertical Slice
@@ -97,14 +93,11 @@ The MVP supports a complete research session flow:
 # Terminal 1: Start infrastructure
 docker-compose up -d
 
-# Terminal 2: Start API
-pnpm --filter @solli/api dev
+# Terminal 2: Start web app
+pnpm --filter @solli/web dev
 
 # Terminal 3: Start browser worker
 pnpm --filter @solli/worker-browser dev
-
-# Terminal 4: Start desktop app
-pnpm --filter @solli/desktop dev
 ```
 
 Then open `http://localhost:3000` and try:
@@ -127,31 +120,17 @@ pnpm build
 
 ## Project Structure Details
 
-### Desktop App (`apps/desktop/`)
+### Web App (`apps/web/`)
 
-Voice-enabled desktop interface with:
-- `VoiceOrb.tsx` - Animated voice activity indicator
-- `AgentTimeline.tsx` - Real-time agent activity feed
-- `SessionPanel.tsx` - Main session control UI
-- `SummaryCard.tsx` - End-of-session summary
-
-### API Server (`apps/api/`)
-
-Fastify backend exposing:
-- `POST /api/sessions` - Create new session with user input
-- `POST /api/sessions/:id/run` - Run agent orchestration for session
-- `GET /api/sessions/:id` - Get session details (including research results)
-- `GET /api/sessions/:id/events` - Get ordered agent events
-- `POST /api/agents/trigger` - Trigger agent execution directly
-- `POST /api/agents/approve` - Approve pending agent action
-- `POST /api/receipts` - Create execution receipt
+Next.js fullstack app with:
+- Route Handlers for session API (`/api/sessions/*`)
+- Real-time voice conversation via ElevenLabs WebSocket
+- Session UI: input, timeline, results, summary
+- Wallet connection for on-chain receipts
 
 ### Agent Core (`packages/agent-core/`)
 
-LangGraph-based orchestration with:
-- State machine workflow for session management
-- Postgres checkpointer for persistence
-- Tool abstraction layer for browser/Gmail/Calendar
+Legacy LangGraph-based orchestration. The active orchestration lives in `apps/web/src/lib/agents/`.
 
 ### Browser Worker (`apps/worker-browser/`)
 

@@ -28,7 +28,3 @@ Thumbs.db
 
 # Docker
 docker/data/
-
-# Rust / Tauri
-target/
-src-tauri/target/

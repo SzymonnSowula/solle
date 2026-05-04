@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Voice-native session operator desktop app with multi-agent orchestration",
+  "description": "Voice-native session operator web app with multi-agent orchestration",
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",

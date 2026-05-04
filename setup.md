@@ -22,7 +22,6 @@
      - approve_action (sessionId: string, approvalId: string, approved: boolean)
 5. Uruchom stack:
       docker-compose up -d
-   pnpm --filter @solli/api dev
+   pnpm --filter @solli/web dev
    pnpm --filter @solli/worker-browser dev
    pnpm --filter @solli/worker-google dev
-   pnpm --filter @solli/desktop dev
