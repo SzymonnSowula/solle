@@ -95,7 +95,7 @@ export class BlockchainReceiptService {
       console.log(`[Blockchain] Receipt ${id} recorded on-chain: ${signature}`);
     } catch (error) {
       console.error('[Blockchain] Failed to write receipt on-chain:', error);
-      // Continue without on-chain txid — receipt is still valid locally
+      // Continue without on-chain txid - receipt is still valid locally
     }
 
     return {

@@ -1,4 +1,4 @@
-# Solli — Voice-Native Session Operator
+# Solli - Voice-Native Session Operator
 
 ## Czym Solli NIE jest
 Nie jest kolejnym ogólnym desktop assistentem sterującym myszką i klawiaturą.
@@ -21,7 +21,7 @@ agentów i kończy krótkim podsumowaniem.
 Solana/x402 jest niewidoczna w UI. Służy do:
 - Zapisywania receiptów (hashy) ważnych akcji jako proof-of-work
 - Mikropłatności między agentem a płatnymi usługami/API (przyszłość)
-- Zamiast głównego elementu — zaufana infrastruktura w tle
+- Zamiast głównego elementu - zaufana infrastruktura w tle
 
 ## Architektura
 ```
@@ -29,9 +29,9 @@ User (voice/web)
   ↔ Next.js App Router (frontend + API routes)
     ↔ ElevenLabs Conversational AI (WebSocket via API proxy)
       ↔ [function calls] → Route Handlers (/api/*)
-        ↔ LangGraph (agent-core) — wykonuje workflow, trzyma stan w Postgres
+        ↔ LangGraph (agent-core) - wykonuje workflow, trzyma stan w Postgres
           ↔ Workers (browser, google)
-        ↔ Postgres — checkpoints, sessions, events, tasks, receipts
-        ↔ Redis — transient state, cache, pub/sub
-        ↔ Solana Devnet — receipts on-chain (async)
+        ↔ Postgres - checkpoints, sessions, events, tasks, receipts
+        ↔ Redis - transient state, cache, pub/sub
+        ↔ Solana Devnet - receipts on-chain (async)
 ```

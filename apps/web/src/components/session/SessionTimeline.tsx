@@ -15,8 +15,8 @@ interface SessionTimelineProps {
 const agentConfig: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
   coordinator: {
     icon: <Bot className="h-3.5 w-3.5" />,
-    color: 'text-teal-700',
-    bg: 'bg-teal-50',
+    color: 'text-red-300',
+    bg: 'bg-red-500/10',
   },
   research: {
     icon: <Search className="h-3.5 w-3.5" />,
@@ -42,32 +42,32 @@ const eventTypeConfig: Record<string, { icon: React.ReactNode }> = {
 export function SessionTimeline({ events }: SessionTimelineProps) {
   if (events.length === 0) {
     return (
-      <div className="rounded-xl border border-cream-300 bg-white p-8 text-center">
-        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-cream-100">
-          <Bot className="h-5 w-5 text-ink-300" />
+      <div className="rounded-xl border border-white/10 bg-neutral-950 p-8 text-center">
+        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-neutral-950">
+          <Bot className="h-5 w-5 text-neutral-600" />
         </div>
-        <p className="text-sm text-ink-400">No events yet. Session is starting...</p>
+        <p className="text-sm text-neutral-500">No events yet. Session is starting...</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-cream-300 bg-white overflow-hidden">
-      <div className="border-b border-cream-200 px-5 py-3">
-        <h3 className="text-sm font-semibold text-ink-700">Activity Timeline</h3>
+    <div className="rounded-xl border border-white/10 bg-neutral-950 overflow-hidden">
+      <div className="border-b border-white/5 px-5 py-3">
+        <h3 className="text-sm font-semibold text-neutral-200">Activity Timeline</h3>
       </div>
       <div className="divide-y divide-cream-100">
         {events.map((event, index) => {
           const config = agentConfig[event.agent_name] || {
             icon: <Bot className="h-3.5 w-3.5" />,
-            color: 'text-ink-500',
-            bg: 'bg-cream-100',
+            color: 'text-neutral-400',
+            bg: 'bg-neutral-950',
           };
           const typeConfig = eventTypeConfig[event.event_type] || { icon: null };
           const isLast = index === events.length - 1;
 
           return (
-            <div key={event.id} className="px-5 py-3.5 flex gap-3.5 group hover:bg-cream-50/50 transition-colors">
+            <div key={event.id} className="px-5 py-3.5 flex gap-3.5 group hover:bg-neutral-900/50 transition-colors">
               <div className="flex flex-col items-center">
                 <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${config.bg} ${config.color} shrink-0`}>
                   {config.icon}
@@ -78,14 +78,14 @@ export function SessionTimeline({ events }: SessionTimelineProps) {
               </div>
               <div className="flex-1 pb-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
                     {event.agent_name}
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-cream-100 px-2 py-0.5 text-[10px] font-medium text-ink-400 uppercase">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-neutral-950 px-2 py-0.5 text-[10px] font-medium text-neutral-500 uppercase">
                     {typeConfig.icon}
                     {event.event_type}
                   </span>
-                  <span className="ml-auto text-[10px] text-ink-300">
+                  <span className="ml-auto text-[10px] text-neutral-600">
                     {new Date(event.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
                 </div>

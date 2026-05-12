@@ -3,7 +3,8 @@ export type IntentClassification =
   | 'INBOX'
   | 'PLANNING'
   | 'APPLICATION'
-  | 'GENERAL';
+  | 'GENERAL'
+  | 'DESKTOP';
 
 export type SessionStatus = 'created' | 'active' | 'running' | 'completed' | 'failed' | 'cancelled';
 
@@ -56,6 +57,18 @@ export interface Session {
   createdAt: Date;
   updatedAt: Date;
   metadata: Record<string, unknown>;
+}
+
+export interface FileOperation {
+  type: 'move' | 'createDir';
+  from?: string;
+  to: string;
+  reason: string;
+}
+
+export interface FileOperationPlan {
+  actions: FileOperation[];
+  summary: string;
 }
 
 export interface SessionCreateInput {

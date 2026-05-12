@@ -75,8 +75,8 @@ Use current date/time if not specified. Respond with JSON only.`;
     const actionDesc = extractedAction.action === 'create'
       ? `create event "${extractedAction.summary}"`
       : extractedAction.action === 'update'
-      ? `update event ${extractedAction.eventId || ''}`
-      : `delete event ${extractedAction.eventId || ''}`;
+        ? `update event ${extractedAction.eventId || ''}`
+        : `delete event ${extractedAction.eventId || ''}`;
 
     pendingApprovals.push({
       id: approvalId,
@@ -84,7 +84,7 @@ Use current date/time if not specified. Respond with JSON only.`;
       taskId: `planning_${Date.now()}`,
       message: `Approve ${actionDesc}?`,
       toolName: `calendar_${extractedAction.action}`,
-        args: extractedAction as unknown as Record<string, unknown>,
+      args: extractedAction as unknown as Record<string, unknown>,
       createdAt: new Date(),
       status: 'pending',
     });
@@ -112,7 +112,7 @@ Use current date/time if not specified. Respond with JSON only.`;
     };
   }
 
-  // Non-mutating: list — execute immediately
+  // Non-mutating: list - execute immediately
   try {
     agentHistory.push({
       agentName: 'planning',

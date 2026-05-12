@@ -1,9 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSession, getSessionById } from '@/lib/db/sessions';
+import { createSession, getSessionById, updateSession } from '@/lib/db/sessions';
+import { addEvent } from '@/lib/db/events';
 import { executeSession, continueSession } from '@/lib/orchestration/session-runner';
+import { desktopAgent } from '@/lib/agents/desktop-agent';
 import { logger } from '@/lib/utils/logger';
 
 const log = logger('voice-tool-call');
+
+function makeStore() {
+  return {
+    updateSession,
+    addEvent: async (event: { sessionId: string; agentName: string; eventType: string; content?: string; metadata?: Record<string, unknown> }) => {
+      await addEvent({
+        sessionId: event.sessionId,
+        agentName: event.agentName,
+        eventType: event.eventType,
+        content: event.content,
+        metadata: event.metadata,
+      });
+    },
+    addTask: async () => {},
+  };
+}
 
 interface ToolCallBody {
   toolName: string;
@@ -116,6 +134,26 @@ export async function POST(request: NextRequest) {
           success: true,
           sessionId,
           events: timeline,
+        });
+      }
+
+      case 'execute_desktop_plan': {
+        const userInput = parameters.input as string;
+        if (!userInput || typeof userInput !== 'string') {
+          return NextResponse.json({ error: 'input is required' }, { status: 400 });
+        }
+
+        const session = await createSession({ input: userInput });
+        const store = makeStore();
+
+        // Generate desktop plan synchronously for voice UX
+        const plan = await desktopAgent(session.id, userInput, store);
+
+        return NextResponse.json({
+          success: true,
+          sessionId: session.id,
+          plan,
+          message: `I prepared a plan to organize your desktop: ${plan.summary}`,
         });
       }
 

@@ -9,11 +9,19 @@ const log = logger('voice-webhook');
 function verifyWebhookSecret(request: NextRequest): boolean {
   const secret = process.env.ELEVENLABS_WEBHOOK_SECRET;
   if (!secret) {
-    console.warn('[Voice Webhook] ELEVENLABS_WEBHOOK_SECRET not set, allowing all requests');
-    return true;
+    // SECURITY: Deny all requests when webhook secret is not configured
+    console.error('[Voice Webhook] ELEVENLABS_WEBHOOK_SECRET not set — rejecting all webhook requests');
+    return false;
   }
   const header = request.headers.get('x-elevenlabs-secret') || request.headers.get('X-ElevenLabs-Secret');
-  return header === secret;
+  // SECURITY: Use timing-safe comparison to prevent timing attacks
+  if (!header) return false;
+  if (header.length !== secret.length) return false;
+  let result = 0;
+  for (let i = 0; i < header.length; i++) {
+    result |= header.charCodeAt(i) ^ secret.charCodeAt(i);
+  }
+  return result === 0;
 }
 
 /**

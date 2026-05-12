@@ -19,7 +19,7 @@ const CONVERSATION: ConversationTurn[] = [
   { id: 4, speaker: 'agent', text: 'Got it. Remote, hybrid, or on-site in Warsaw?', delay: 4200 },
   { id: 5, speaker: 'user', text: 'Warsaw or remote is fine.', delay: 5500 },
   { id: 6, speaker: 'agent', text: 'Searching for openings now...', delay: 6500, cost: 0.001, toolCall: 'browser_search' },
-  { id: 7, speaker: 'agent', text: 'I found 5 strong matches. Top three:\n\n1. AI Research Intern at XYZ Labs — Warsaw, published NeurIPS papers, strong mentorship.\n2. ML Intern at TechCorp Poland — hybrid, NLP and CV focus, $12M Series A.\n3. Data Science Intern at Global Analytics — remote, Fortune 500 projects.\n\nWhich ones should I prepare applications for?', delay: 8000 },
+  { id: 7, speaker: 'agent', text: 'I found 5 strong matches. Top three:\n\n1. AI Research Intern at XYZ Labs - Warsaw, published NeurIPS papers, strong mentorship.\n2. ML Intern at TechCorp Poland - hybrid, NLP and CV focus, $12M Series A.\n3. Data Science Intern at Global Analytics - remote, Fortune 500 projects.\n\nWhich ones should I prepare applications for?', delay: 8000 },
   { id: 8, speaker: 'user', text: 'The first two.', delay: 10000 },
   { id: 9, speaker: 'agent', text: 'Drafting tailored cover letters and updating your CV...', delay: 11000, cost: 0.0015, toolCall: 'generate_documents' },
   { id: 10, speaker: 'agent', text: 'Done. For XYZ Labs I highlighted your Rust and Solana experience. For TechCorp I emphasized your NLP projects. Want to review before I send?', delay: 13000 },
@@ -69,20 +69,20 @@ export function SimulationPanel({ query, onClose }: SimulationPanelProps) {
   }, [query]);
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-ink-800/40 backdrop-blur-sm animate-fade-in">
-      <div className="mx-4 w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl border border-cream-300 bg-white shadow-xl">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div className="mx-4 w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl border border-white/10 bg-neutral-950 shadow-xl">
         {/* Header */}
-        <div className="sticky top-0 z-10 border-b border-cream-200 bg-white/80 backdrop-blur-sm px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 z-10 border-b border-white/5 bg-neutral-950/80 backdrop-blur-sm px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-ink-800 flex items-center gap-2">
-              <Play className="h-5 w-5 text-teal-600" />
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Play className="h-5 w-5 text-red-400" />
               Live Conversation Demo
             </h2>
-            <p className="text-xs text-ink-400 mt-0.5">Watch how Solli talks you through a full workflow</p>
+            <p className="text-xs text-neutral-500 mt-0.5">Watch how Volle talks you through a full workflow</p>
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-cream-100 text-ink-400 hover:bg-cream-200 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-950 text-neutral-500 hover:bg-cream-200 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -90,14 +90,14 @@ export function SimulationPanel({ query, onClose }: SimulationPanelProps) {
 
         <div className="p-6 space-y-4">
           {/* Budget */}
-          <div className="rounded-xl border border-cream-200 bg-cream-50 px-4 py-3">
+          <div className="rounded-xl border border-white/5 bg-neutral-900 px-4 py-3">
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-ink-500">
-                <Wallet className="h-3.5 w-3.5 text-teal-600" />
+              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+                <Wallet className="h-3.5 w-3.5 text-red-400" />
                 Agent Treasury
               </div>
-              <div className="text-xs text-ink-400">
-                Spent: <span className="font-semibold text-teal-700">{spentSoFar.toFixed(4)} SOL</span>
+              <div className="text-xs text-neutral-500">
+                Spent: <span className="font-semibold text-red-300">{spentSoFar.toFixed(4)} SOL</span>
                 {phase === 'completed' && (
                   <span className="ml-2 text-emerald-600">Total: {TOTAL_COST.toFixed(4)} SOL</span>
                 )}
@@ -105,11 +105,11 @@ export function SimulationPanel({ query, onClose }: SimulationPanelProps) {
             </div>
             <div className="h-2 rounded-full bg-cream-200 overflow-hidden">
               <div
-                className="h-full rounded-full bg-teal-500 transition-all duration-500 ease-out"
+                className="h-full rounded-full bg-red-500 transition-all duration-500 ease-out"
                 style={{ width: `${Math.min((spentSoFar / 0.01) * 100, 100)}%` }}
               />
             </div>
-            <p className="mt-1.5 text-[10px] text-ink-400">
+            <p className="mt-1.5 text-[10px] text-neutral-500">
               Each tool call deducts a micropayment from your treasury via x402. Real payments settle on Solana.
             </p>
           </div>
@@ -121,20 +121,18 @@ export function SimulationPanel({ query, onClose }: SimulationPanelProps) {
                 key={turn.id}
                 className={`flex gap-3 animate-slide-up ${turn.speaker === 'user' ? 'flex-row-reverse' : ''}`}
               >
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                  turn.speaker === 'user' ? 'bg-ink-800 text-white' : 'bg-teal-50 text-teal-700 border border-teal-200'
-                }`}>
+                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${turn.speaker === 'user' ? 'bg-red-500 text-white' : 'bg-red-500/10 text-red-300 border border-red-500/30'
+                  }`}>
                   {turn.speaker === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                 </div>
-                <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
-                  turn.speaker === 'user'
-                    ? 'bg-ink-800 text-white rounded-tr-sm'
-                    : 'bg-cream-100 text-ink-800 rounded-tl-sm border border-cream-200'
-                }`}>
+                <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${turn.speaker === 'user'
+                    ? 'bg-red-500 text-white rounded-tr-sm'
+                    : 'bg-neutral-950 text-white rounded-tl-sm border border-white/5'
+                  }`}>
                   <p className="text-sm leading-relaxed whitespace-pre-line">{turn.text}</p>
                   {turn.toolCall && (
                     <div className="mt-1.5 flex items-center gap-1.5">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-neutral-950/60 px-2 py-0.5 text-[10px] font-medium text-amber-700">
                         <Coins className="h-2.5 w-2.5" />
                         {(turn.cost ?? 0).toFixed(4)} SOL · {turn.toolCall}
                       </span>
@@ -144,7 +142,7 @@ export function SimulationPanel({ query, onClose }: SimulationPanelProps) {
               </div>
             ))}
             {phase === 'running' && (
-              <div className="flex items-center gap-2 text-xs text-ink-400 pl-11">
+              <div className="flex items-center gap-2 text-xs text-neutral-500 pl-11">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 Listening...
               </div>
@@ -153,37 +151,37 @@ export function SimulationPanel({ query, onClose }: SimulationPanelProps) {
 
           {/* Summary when done */}
           {phase === 'completed' && (
-            <div className="rounded-xl border border-teal-200 bg-teal-50 p-4 animate-fade-in">
-              <h3 className="text-sm font-semibold text-teal-800 mb-2 flex items-center gap-2">
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 animate-fade-in">
+              <h3 className="text-sm font-semibold text-red-200 mb-2 flex items-center gap-2">
                 <Mic className="h-4 w-4" />
                 Session Complete
               </h3>
-              <ul className="space-y-1 text-xs text-ink-700">
+              <ul className="space-y-1 text-xs text-neutral-200">
                 <li className="flex items-start gap-2">
-                  <span className="text-teal-600 mt-0.5">&#10003;</span>
+                  <span className="text-red-400 mt-0.5">&#10003;</span>
                   <span>Applied to <strong>2 internships</strong> (XYZ Labs, TechCorp Poland)</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-teal-600 mt-0.5">&#10003;</span>
+                  <span className="text-red-400 mt-0.5">&#10003;</span>
                   <span>Generated <strong>tailored CV + cover letters</strong></span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-teal-600 mt-0.5">&#10003;</span>
+                  <span className="text-red-400 mt-0.5">&#10003;</span>
                   <span>Sent <strong>2 emails</strong> with your approval</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-teal-600 mt-0.5">&#10003;</span>
+                  <span className="text-red-400 mt-0.5">&#10003;</span>
                   <span>Saved <strong>on-chain receipt</strong> on Solana</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-teal-600 mt-0.5">&#10003;</span>
+                  <span className="text-red-400 mt-0.5">&#10003;</span>
                   <span>Total cost: <strong>{TOTAL_COST.toFixed(4)} SOL</strong> (3 tool calls)</span>
                 </li>
               </ul>
-              <div className="mt-3 pt-3 border-t border-teal-200">
+              <div className="mt-3 pt-3 border-t border-red-500/30">
                 <button
                   onClick={onClose}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-ink-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-ink-700 transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-400 transition-colors"
                 >
                   <ArrowRight className="h-4 w-4" />
                   Start a Real Session

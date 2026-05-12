@@ -11,7 +11,7 @@ import { VoiceConversationPanel } from '@/components/session/VoiceConversationPa
 import { WalletConnectButton } from '@/components/wallet/WalletConnectButton';
 import { Loader2, ArrowLeft, Receipt, Zap, Tag, Clock, AlertCircle, Radio } from 'lucide-react';
 import Link from 'next/link';
-import { getSolliProgram, createOnchainReceipt, updateOnchainSessionStatus, recordSessionCost } from '@/lib/solana/anchor-client';
+import { getVolleProgram, createOnchainReceipt, updateOnchainSessionStatus, recordSessionCost } from '@/lib/solana/anchor-client';
 
 interface SessionData {
   id: string;
@@ -43,10 +43,10 @@ interface ResearchResultData {
 }
 
 const statusConfig: Record<string, { icon: React.ReactNode; color: string; bg: string; label: string }> = {
-  created: { icon: <Clock className="h-3.5 w-3.5" />, color: 'text-ink-500', bg: 'bg-cream-100', label: 'Created' },
-  running: { icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, color: 'text-teal-700', bg: 'bg-teal-50', label: 'Running' },
-  completed: { icon: <Zap className="h-3.5 w-3.5" />, color: 'text-emerald-700', bg: 'bg-emerald-50', label: 'Completed' },
-  failed: { icon: <AlertCircle className="h-3.5 w-3.5" />, color: 'text-red-700', bg: 'bg-red-50', label: 'Failed' },
+  created: { icon: <Clock className="h-3.5 w-3.5" />, color: 'text-neutral-400', bg: 'bg-neutral-950', label: 'Created' },
+  running: { icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, color: 'text-red-300', bg: 'bg-red-500/10', label: 'Running' },
+  completed: { icon: <Zap className="h-3.5 w-3.5" />, color: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'Completed' },
+  failed: { icon: <AlertCircle className="h-3.5 w-3.5" />, color: 'text-red-400', bg: 'bg-red-500/10', label: 'Failed' },
 };
 
 export default function SessionPage() {
@@ -170,7 +170,7 @@ export default function SessionPage() {
 
       const actualCostSol = settleData.actualCostSol as number;
       if (actualCostSol <= 0) {
-        alert('Nothing to settle — session cost is zero');
+        alert('Nothing to settle - session cost is zero');
         setSettling(false);
         return;
       }
@@ -180,7 +180,7 @@ export default function SessionPage() {
       if (!walletAdapter) {
         throw new Error('Wallet adapter not available');
       }
-      const program = getSolliProgram(connection, walletAdapter);
+      const program = getVolleProgram(connection, walletAdapter);
       const sessionIdNum = (session.metadata?.onchainSessionId as number)
         || new Date(session.createdAt).getTime();
 
@@ -266,7 +266,7 @@ export default function SessionPage() {
       if (!walletAdapter) {
         throw new Error('Wallet adapter not available');
       }
-      const program = getSolliProgram(connection, walletAdapter);
+      const program = getVolleProgram(connection, walletAdapter);
       // Use stored onchain session ID, fallback to createdAt timestamp for consistency
       const sessionIdNum = (session.metadata?.onchainSessionId as number)
         || new Date(session.createdAt).getTime();
@@ -301,23 +301,23 @@ export default function SessionPage() {
   const status = statusConfig[session?.status || 'created'];
 
   return (
-    <div className="min-h-screen flex flex-col bg-cream-100">
+    <div className="min-h-screen flex flex-col bg-neutral-950">
       {/* Header */}
-      <header className="w-full border-b border-cream-300 bg-cream-50/80 backdrop-blur-sm sticky top-0 z-50">
+      <header className="w-full border-b border-white/10 bg-neutral-900/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-cream-100 text-ink-500 transition-colors hover:bg-cream-200 hover:text-ink-700"
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-950 text-neutral-400 transition-colors hover:bg-cream-200 hover:text-neutral-200"
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
             <div>
-              <h1 className="text-sm font-semibold text-ink-800">Session</h1>
+              <h1 className="text-sm font-semibold text-white">Session</h1>
               <div className="flex items-center gap-2">
-                <p className="text-[10px] text-ink-400 font-mono">{id.slice(0, 8)}...</p>
+                <p className="text-[10px] text-neutral-500 font-mono">{id.slice(0, 8)}...</p>
                 {sseConnected && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-400 uppercase tracking-wider">
                     <Radio className="h-2 w-2" />
                     Live
                   </span>
@@ -333,17 +333,17 @@ export default function SessionPage() {
       <main className="flex-1 mx-auto w-full max-w-3xl px-6 py-8">
         {/* Status Banner */}
         {session?.status === 'running' && (
-          <div className="mb-6 flex items-center gap-3 rounded-xl border border-teal-200 bg-teal-50 px-5 py-3">
-            <Loader2 className="h-4 w-4 animate-spin text-teal-600" />
-            <span className="text-sm font-medium text-teal-800">Session is running...</span>
+          <div className="mb-6 flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-3">
+            <Loader2 className="h-4 w-4 animate-spin text-red-400" />
+            <span className="text-sm font-medium text-red-200">Session is running...</span>
           </div>
         )}
 
         {session?.status === 'clarifying' && (
-          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
+          <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
             <div className="flex items-center gap-2 mb-3">
-              <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-              <span className="text-sm font-semibold text-amber-800">Waiting for your answer</span>
+              <div className="h-2 w-2 rounded-full bg-amber-500/100 animate-pulse" />
+              <span className="text-sm font-semibold text-amber-400">Waiting for your answer</span>
             </div>
             <div className="flex gap-2">
               <input
@@ -354,7 +354,7 @@ export default function SessionPage() {
                   if (e.key === 'Enter') handleSendClarification();
                 }}
                 placeholder="Type your answer..."
-                className="flex-1 rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-black outline-none focus:border-amber-500"
+                className="flex-1 rounded-lg border border-amber-500/30 bg-neutral-950 px-3 py-2 text-sm text-white outline-none focus:border-amber-500"
               />
               <button
                 onClick={handleSendClarification}
@@ -370,13 +370,13 @@ export default function SessionPage() {
 
         <div className="space-y-5">
           {/* Request Card */}
-          <div className="rounded-xl border border-cream-300 bg-white overflow-hidden">
-            <div className="border-b border-cream-200 px-5 py-3 flex items-center gap-2">
-              <Tag className="h-4 w-4 text-ink-400" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-ink-400">Request</span>
+          <div className="rounded-xl border border-white/10 bg-neutral-950 overflow-hidden">
+            <div className="border-b border-white/5 px-5 py-3 flex items-center gap-2">
+              <Tag className="h-4 w-4 text-neutral-500" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Request</span>
             </div>
             <div className="px-5 py-4">
-              <p className="text-base text-ink-800 font-medium">{session?.input || '...'}</p>
+              <p className="text-base text-white font-medium">{session?.input || '...'}</p>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 {status && (
                   <span className={`inline-flex items-center gap-1.5 rounded-full ${status.bg} px-3 py-1 text-xs font-semibold ${status.color}`}>
@@ -385,7 +385,7 @@ export default function SessionPage() {
                   </span>
                 )}
                 {session?.intent && (
-                  <span className="inline-flex items-center rounded-full bg-cream-100 px-3 py-1 text-xs font-medium text-ink-500">
+                  <span className="inline-flex items-center rounded-full bg-neutral-950 px-3 py-1 text-xs font-medium text-neutral-400">
                     Intent: {session.intent}
                   </span>
                 )}
@@ -414,15 +414,15 @@ export default function SessionPage() {
 
           {/* Receipt */}
           {session?.status === 'completed' && (
-            <div className="rounded-xl border border-cream-300 bg-white overflow-hidden">
-              <div className="border-b border-cream-200 px-5 py-3 flex items-center gap-2">
-                <Receipt className="h-4 w-4 text-teal-600" />
-                <h3 className="text-sm font-semibold text-ink-700">On-Chain Receipt</h3>
+            <div className="rounded-xl border border-white/10 bg-neutral-950 overflow-hidden">
+              <div className="border-b border-white/5 px-5 py-3 flex items-center gap-2">
+                <Receipt className="h-4 w-4 text-red-400" />
+                <h3 className="text-sm font-semibold text-neutral-200">On-Chain Receipt</h3>
               </div>
               <div className="px-5 py-5">
                 {!connected && (
-                  <div className="flex items-center gap-2 text-sm text-ink-400 mb-3">
-                    <AlertCircle className="h-4 w-4 text-amber-500" />
+                  <div className="flex items-center gap-2 text-sm text-neutral-500 mb-3">
+                    <AlertCircle className="h-4 w-4 text-amber-400" />
                     Connect your wallet to save a receipt on-chain.
                   </div>
                 )}
@@ -430,7 +430,7 @@ export default function SessionPage() {
                   <button
                     onClick={handleSaveReceipt}
                     disabled={savingReceipt || !connected}
-                    className="inline-flex items-center gap-2 rounded-lg bg-ink-800 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-ink-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-red-400 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {savingReceipt ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -442,7 +442,7 @@ export default function SessionPage() {
                   <button
                     onClick={handleSettleAndPay}
                     disabled={settling || !connected}
-                    className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {settling ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -453,13 +453,13 @@ export default function SessionPage() {
                   </button>
                 </div>
                 {settleTx && (
-                  <div className="mt-3 rounded-lg bg-teal-50 border border-teal-200 px-4 py-3 space-y-1.5">
-                    <p className="text-xs text-teal-700 font-medium">Payment settled on-chain!</p>
+                  <div className="mt-3 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 space-y-1.5">
+                    <p className="text-xs text-red-300 font-medium">Payment settled on-chain!</p>
                     <a
                       href={`https://explorer.solana.com/tx/${settleTx}?cluster=devnet`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-teal-600 hover:text-teal-700 transition-colors"
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-400 hover:text-red-300 transition-colors"
                     >
                       View payment on Solscan
                       <ArrowLeft className="h-2.5 w-2.5 rotate-180" />
@@ -467,15 +467,15 @@ export default function SessionPage() {
                   </div>
                 )}
                 {receiptHash && (
-                  <div className="mt-3 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 space-y-1.5">
-                    <p className="text-xs text-emerald-700 font-medium">Receipt saved!</p>
-                    <p className="text-[10px] text-emerald-600 font-mono">Hash: {receiptHash}</p>
+                  <div className="mt-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-4 py-3 space-y-1.5">
+                    <p className="text-xs text-emerald-400 font-medium">Receipt saved!</p>
+                    <p className="text-[10px] text-emerald-400 font-mono">Hash: {receiptHash}</p>
                     {receiptTx && (
                       <a
                         href={`https://explorer.solana.com/tx/${receiptTx}?cluster=devnet`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[10px] font-semibold text-teal-600 hover:text-teal-700 transition-colors"
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-400 hover:text-red-300 transition-colors"
                       >
                         View on Solscan
                         <ArrowLeft className="h-2.5 w-2.5 rotate-180" />
@@ -490,10 +490,10 @@ export default function SessionPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-cream-300 bg-cream-50 mt-8">
+      <footer className="border-t border-white/10 bg-neutral-900 mt-8">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <span className="text-xs text-ink-300">Solli v0.1.0</span>
-          <span className="text-xs text-ink-300">Powered by Solana</span>
+          <span className="text-xs text-neutral-600">Volle v0.1.0</span>
+          <span className="text-xs text-neutral-600">Powered by Solana</span>
         </div>
       </footer>
     </div>

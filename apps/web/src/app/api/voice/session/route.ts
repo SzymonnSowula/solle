@@ -29,13 +29,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // NOTE: In production, use signed URLs instead of exposing the raw API key.
-    // For hackathon/demo, the API key is sent to the client so the browser can
-    // open the WebSocket directly (WebSocket cannot carry custom headers).
+    // SECURITY: Generate a signed URL instead of exposing the raw API key.
+    // The signed URL provides a temporary, scoped access token for the WebSocket connection.
+    let signedUrl: string | undefined;
+    try {
+      const signedUrlRes = await fetch(
+        `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${agentId}`,
+        {
+          method: 'GET',
+          headers: { 'xi-api-key': config.apiKey },
+        }
+      );
+      if (signedUrlRes.ok) {
+        const signedUrlData = await signedUrlRes.json() as { signed_url: string };
+        signedUrl = signedUrlData.signed_url;
+      }
+    } catch (err) {
+      console.warn('[POST /api/voice/session] Signed URL generation failed, falling back:', err);
+    }
+
     return NextResponse.json({
       sessionId,
       agentId,
-      apiKey: config.apiKey,
+      // SECURITY: Prefer signed URL over raw API key. Only expose apiKey in dev as last resort.
+      ...(signedUrl
+        ? { signedUrl }
+        : process.env.NODE_ENV === 'development'
+          ? { apiKey: config.apiKey, _warning: 'Using raw API key — signed URL failed. Do NOT use in production.' }
+          : { error: 'Voice configuration failed — signed URL unavailable' }
+      ),
       wsUrl: config.wsUrl,
     });
   } catch (error) {

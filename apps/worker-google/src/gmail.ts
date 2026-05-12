@@ -17,23 +17,31 @@ export interface DraftEmail {
   threadId?: string;
 }
 
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
-
 export class GmailWorker {
   private gmail: ReturnType<typeof google.gmail>;
   private initialized = false;
 
-  constructor() {
+  constructor(oauth2Client?: InstanceType<typeof google.auth.OAuth2>) {
     this.gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+    if (oauth2Client) {
+      this.initialized = true;
+    }
   }
 
-  async listMessages(
-    maxResults: number = 10
-  ): Promise<GmailMessage[]> {
+  static createWithTokens(accessToken: string, refreshToken?: string): GmailWorker {
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+    oauth2Client.setCredentials({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    return new GmailWorker(oauth2Client);
+  }
+
+  async listMessages(maxResults: number = 10): Promise<GmailMessage[]> {
     if (!this.initialized) {
       throw new Error('Gmail worker not initialized');
     }
@@ -166,17 +174,15 @@ export class GmailWorker {
     return lines.filter(Boolean).join('\r\n');
   }
 
-  setCredentials(accessToken: string, refreshToken?: string): void {
-    oauth2Client.setCredentials({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    });
-    this.initialized = true;
-  }
-
   isInitialized(): boolean {
     return this.initialized;
   }
 }
 
-export const gmailWorker = new GmailWorker();
+// Legacy singleton for backward compatibility
+const legacyOauth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI
+);
+export const gmailWorker = new GmailWorker(legacyOauth2Client);

@@ -1,4 +1,4 @@
-# Solli — Product Plan
+# Solli - Product Plan
 
 > Voice-Native Onchain Process Operator
 > Hackathon: Colosseum (Open Track + ElevenLabs)
@@ -7,7 +7,7 @@
 
 ## 1. Sharp Use Case
 
-**Problem:** AI assistants answer questions, but they don't *do* the work. ChatGPT can write a cover letter, but it won't send it. Claude can research a company, but it won't apply for you. There is no voice-native system that guides you through a complete workflow — asking questions, executing steps, and closing the loop.
+**Problem:** AI assistants answer questions, but they don't *do* the work. ChatGPT can write a cover letter, but it won't send it. Claude can research a company, but it won't apply for you. There is no voice-native system that guides you through a complete workflow - asking questions, executing steps, and closing the loop.
 
 **Target User:** Crypto-native knowledge workers who want an operator, not a chatbot.
 
@@ -148,11 +148,11 @@ Unlike "ChatGPT with voice," Solli uses ElevenLabs as a **process orchestrator**
 | Personality | "Solli, your voice process operator" |
 
 **Architecture:**
-- **Coordinator Agent** (ElevenLabs primary) — understands intent, asks clarifying questions, routes to subagents
-- **Research Agent** — executes browser search, returns results to coordinator
-- **Inbox Agent** — drafts/sends emails, returns drafts for approval
-- **Planning Agent** — reads/creates calendar events
-- **Summary Agent** — wraps up session, presents cost + receipt option
+- **Coordinator Agent** (ElevenLabs primary) - understands intent, asks clarifying questions, routes to subagents
+- **Research Agent** - executes browser search, returns results to coordinator
+- **Inbox Agent** - drafts/sends emails, returns drafts for approval
+- **Planning Agent** - reads/creates calendar events
+- **Summary Agent** - wraps up session, presents cost + receipt option
 
 **Why this is better than one big agent:**
 Each agent has a focused system prompt and tool set. ElevenLabs workflows support routing between conversational stages. This is more stable than a single massive prompt trying to do everything.
@@ -195,7 +195,7 @@ Each agent has a focused system prompt and tool set. ElevenLabs workflows suppor
 - [x] Session creation + research flow with x402 cost tracking
 - [x] Onchain session PDA creation
 - [x] Onchain receipt with wallet sign + cost hash
-- [x] Agent Treasury PDA — user funds SOL, agent spends per tool call
+- [x] Agent Treasury PDA - user funds SOL, agent spends per tool call
 - [x] Live timeline via SSE + Cost Breakdown UI
 - [x] Demo simulation as conversation transcript
 - [x] Clean, product-grade UI
@@ -217,5 +217,5 @@ Each agent has a focused system prompt and tool set. ElevenLabs workflows suppor
 - Clean UI that looks like a real product
 
 **For pitch:**
-- "ChatGPT answers. Solli does. A voice-native process operator that talks you through real work — research, applications, planning — and proves it on Solana."
+- "ChatGPT answers. Solli does. A voice-native process operator that talks you through real work - research, applications, planning - and proves it on Solana."
 - "Voice-first, onchain-native, human-in-the-loop. The AI era needs operators, not chatbots."

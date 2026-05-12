@@ -91,9 +91,9 @@ Użycie: Open Graph meta tag, Twitter card
 ---
 Instrukcje Generowania
 Narzędzia AI (polecam w tej kolejności):
-1. Midjourney v6 — najlepsze do abstrakcji 3D i glassmorphism
-2. DALL-E 3 — dobre do UI mockupów
-3. Ideogram 2.0 — najlepsze do tekstu na obrazkach (jeśli potrzebujesz)
+1. Midjourney v6 - najlepsze do abstrakcji 3D i glassmorphism
+2. DALL-E 3 - dobre do UI mockupów
+3. Ideogram 2.0 - najlepsze do tekstu na obrazkach (jeśli potrzebujesz)
 Parametry dla Midjourney:
 --style raw --stylize 250 --v 6
 Dla przezroczystych tła:

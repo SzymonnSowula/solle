@@ -72,7 +72,7 @@ If information is missing, include null for that field. Respond with JSON only.`
   // Actions that modify state require approval
   if (extractedAction.action === 'send' || extractedAction.action === 'draft') {
     if (!extractedAction.to || !extractedAction.subject) {
-      // Missing critical info — ask for approval (which will include a clarifying question)
+      // Missing critical info - ask for approval (which will include a clarifying question)
       const approvalId = crypto.randomUUID();
       pendingApprovals.push({
         id: approvalId,
@@ -115,9 +115,9 @@ If information is missing, include null for that field. Respond with JSON only.`
       agentName: 'inbox',
       taskId: `inbox_${Date.now()}`,
       message: `Approve ${extractedAction.action} email to ${extractedAction.to} with subject "${extractedAction.subject}"?`,
-        toolName: `gmail_${extractedAction.action}`,
-        args: extractedAction as unknown as Record<string, unknown>,
-        createdAt: new Date(),
+      toolName: `gmail_${extractedAction.action}`,
+      args: extractedAction as unknown as Record<string, unknown>,
+      createdAt: new Date(),
       status: 'pending',
     });
 
@@ -144,7 +144,7 @@ If information is missing, include null for that field. Respond with JSON only.`
     };
   }
 
-  // Non-mutating actions: list, read — execute immediately
+  // Non-mutating actions: list, read - execute immediately
   try {
     agentHistory.push({
       agentName: 'inbox',

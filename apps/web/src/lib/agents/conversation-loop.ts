@@ -62,7 +62,7 @@ export async function analyzeIntentAndNeeds(
     .map((h) => `${h.role === 'user' ? 'User' : 'Agent'}: ${h.content}`)
     .join('\n');
 
-  const prompt = `You are Solli, a voice-native process operator. Your job is to understand what the user wants and ask clarifying questions ONLY when absolutely necessary.
+  const prompt = `You are Volle, a voice-native process operator. Your job is to understand what the user wants and ask clarifying questions ONLY when absolutely necessary.
 
 Conversation so far:
 ${historyText}

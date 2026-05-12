@@ -4,7 +4,7 @@ import idl from './idl.json';
 
 const PROGRAM_ID = new PublicKey('CnrBFrZP2kwZWYbev3xzTJsDJGK6bTe1HBaNtQ55JSxx');
 
-export function getSolliProgram(connection: Connection, wallet: any) {
+export function getVolleProgram(connection: Connection, wallet: any) {
   const provider = new AnchorProvider(connection, wallet, {
     commitment: 'confirmed',
   });
@@ -83,6 +83,26 @@ export async function getTreasuryBalance(
   } catch {
     return null;
   }
+}
+
+export async function withdrawFromTreasury(
+  program: Program,
+  owner: PublicKey,
+  amountSol: number
+) {
+  const [treasuryPDA] = findTreasuryPDA(owner);
+  const lamports = new BN(amountSol * LAMPORTS_PER_SOL);
+
+  const tx = await program.methods
+    .withdraw(lamports)
+    .accounts({
+      owner,
+      treasury: treasuryPDA,
+      systemProgram: SystemProgram.programId,
+    })
+    .rpc();
+
+  return { tx, treasuryPDA };
 }
 
 // --- Session ---

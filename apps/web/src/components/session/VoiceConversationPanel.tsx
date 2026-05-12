@@ -94,7 +94,7 @@ export function VoiceConversationPanel({ sessionId: initialSessionId }: VoiceCon
           type: 'conversation_initiation_client_data',
           conversation_config_override: {
             agent: {
-              prompt: `You are Solli, a voice-native process operator. Your job is to help users accomplish real work through natural conversation.
+              prompt: `You are Volle, a voice-native process operator. Your job is to help users accomplish real work through natural conversation.
 
 How you behave:
 - Ask clarifying questions before taking action
@@ -110,7 +110,7 @@ You have access to the following tools:
 
 When a user asks for something vague, ask 1-2 clarifying questions before proceeding.
 Always confirm the session ID with the user after creating it.`,
-              first_message: "Hey, I'm Solli. What are we working on today?",
+              first_message: "Hey, I'm Volle. What are we working on today?",
               language: 'en',
             },
             asr: {
@@ -126,7 +126,7 @@ Always confirm the session ID with the user after creating it.`,
             client_tools: [
               {
                 name: 'create_session',
-                description: 'Create a new Solli work session for the user request',
+                description: 'Create a new Volle work session for the user request',
                 parameters: {
                   type: 'object',
                   properties: {
@@ -343,19 +343,19 @@ Always confirm the session ID with the user after creating it.`,
   }, [stop]);
 
   return (
-    <div className="rounded-xl border border-cream-300 bg-white overflow-hidden">
-      <div className="border-b border-cream-200 px-5 py-3 flex items-center justify-between">
+    <div className="rounded-xl border border-white/10 bg-neutral-950 overflow-hidden">
+      <div className="border-b border-white/5 px-5 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Mic className="h-4 w-4 text-teal-600" />
-          <h3 className="text-sm font-semibold text-ink-700">Live Voice</h3>
+          <Mic className="h-4 w-4 text-red-400" />
+          <h3 className="text-sm font-semibold text-neutral-200">Live Voice</h3>
         </div>
         <button
           onClick={isActive ? stop : start}
           disabled={status === 'connecting'}
           className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all duration-200 ${
             isActive
-              ? 'bg-ink-800 text-white hover:bg-ink-700'
-              : 'bg-teal-600 text-white hover:bg-teal-700'
+              ? 'bg-red-500 text-white hover:bg-red-400'
+              : 'bg-red-600 text-white hover:bg-red-700'
           } disabled:opacity-50`}
         >
           {status === 'connecting' ? (
@@ -374,25 +374,25 @@ Always confirm the session ID with the user after creating it.`,
           <VoiceOrb status={status as any} />
           <div className="flex items-center gap-2">
             <div className={`h-2 w-2 rounded-full ${
-              status === 'idle' ? 'bg-cream-400' :
+              status === 'idle' ? 'bg-neutral-500' :
               status === 'connecting' ? 'bg-amber-400 animate-pulse' :
-              status === 'connected' ? 'bg-teal-500' :
-              status === 'listening' ? 'bg-teal-500 animate-pulse' :
-              status === 'speaking' ? 'bg-teal-600' :
+              status === 'connected' ? 'bg-red-500' :
+              status === 'listening' ? 'bg-red-500 animate-pulse' :
+              status === 'speaking' ? 'bg-red-600' :
               'bg-red-500'
             }`} />
-            <span className="text-xs font-medium text-ink-400 uppercase tracking-wider">{status}</span>
+            <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">{status}</span>
             {status === 'speaking' && (
-              <Volume2 className="h-3 w-3 text-teal-600 animate-pulse" />
+              <Volume2 className="h-3 w-3 text-red-400 animate-pulse" />
             )}
           </div>
           {activeSessionId && sessionStatus && (
             <div className="flex flex-col items-center gap-1">
               <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${
-                sessionStatus === 'completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                sessionStatus === 'failed' ? 'bg-red-50 text-red-700 border border-red-200' :
-                sessionStatus === 'clarifying' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                'bg-cream-50 text-ink-500 border border-cream-200'
+                sessionStatus === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' :
+                sessionStatus === 'failed' ? 'bg-red-500/10 text-red-400 border border-red-500/30' :
+                sessionStatus === 'clarifying' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' :
+                'bg-neutral-900 text-neutral-400 border border-white/5'
               }`}>
                 Session {sessionStatus}
               </span>
@@ -406,8 +406,8 @@ Always confirm the session ID with the user after creating it.`,
         </div>
 
         {error && (
-          <div className="mt-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-center">
-            <p className="text-xs text-red-600 font-medium">{error}</p>
+          <div className="mt-4 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-center">
+            <p className="text-xs text-red-400 font-medium">{error}</p>
           </div>
         )}
 

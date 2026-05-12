@@ -20,24 +20,31 @@ export interface CreateEventInput {
   location?: string;
 }
 
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
-
 export class CalendarWorker {
   private calendar: ReturnType<typeof google.calendar>;
   private initialized = false;
 
-  constructor() {
+  constructor(oauth2Client?: InstanceType<typeof google.auth.OAuth2>) {
     this.calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    if (oauth2Client) {
+      this.initialized = true;
+    }
   }
 
-  async listEvents(
-    timeMin?: string,
-    maxResults: number = 10
-  ): Promise<CalendarEvent[]> {
+  static createWithTokens(accessToken: string, refreshToken?: string): CalendarWorker {
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+    oauth2Client.setCredentials({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    return new CalendarWorker(oauth2Client);
+  }
+
+  async listEvents(timeMin?: string, maxResults: number = 10): Promise<CalendarEvent[]> {
     if (!this.initialized) {
       throw new Error('Calendar worker not initialized');
     }
@@ -73,12 +80,8 @@ export class CalendarWorker {
         summary: input.summary,
         description: input.description,
         location: input.location,
-        start: {
-          dateTime: input.startTime,
-        },
-        end: {
-          dateTime: input.endTime,
-        },
+        start: { dateTime: input.startTime },
+        end: { dateTime: input.endTime },
         attendees: input.attendees?.map((email) => ({ email })),
       },
     });
@@ -96,10 +99,7 @@ export class CalendarWorker {
     };
   }
 
-  async updateEvent(
-    eventId: string,
-    updates: Partial<CreateEventInput>
-  ): Promise<CalendarEvent> {
+  async updateEvent(eventId: string, updates: Partial<CreateEventInput>): Promise<CalendarEvent> {
     if (!this.initialized) {
       throw new Error('Calendar worker not initialized');
     }
@@ -142,17 +142,15 @@ export class CalendarWorker {
     });
   }
 
-  setCredentials(accessToken: string, refreshToken?: string): void {
-    oauth2Client.setCredentials({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    });
-    this.initialized = true;
-  }
-
   isInitialized(): boolean {
     return this.initialized;
   }
 }
 
-export const calendarWorker = new CalendarWorker();
+// Legacy singleton for backward compatibility
+const legacyOauth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI
+);
+export const calendarWorker = new CalendarWorker(legacyOauth2Client);

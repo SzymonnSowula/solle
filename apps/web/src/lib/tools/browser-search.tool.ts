@@ -35,9 +35,14 @@ export async function browserSearchTool(input: BrowserSearchInput): Promise<Brow
 
   try {
     const paymentHeaders = input.sessionId ? buildToolPaymentHeaders('browser_search', input.sessionId) : {};
+    const workerSecret = process.env.WORKER_AUTH_SECRET;
     const response = await fetch(`${baseUrl}/tasks`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...paymentHeaders },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(workerSecret ? { 'x-worker-secret': workerSecret } : {}),
+        ...paymentHeaders,
+      },
       body: JSON.stringify({
         task: 'search',
         query: input.query,

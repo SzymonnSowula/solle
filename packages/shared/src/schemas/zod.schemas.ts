@@ -9,7 +9,7 @@ export const SessionCreateSchema = z.object({
 export const SessionUpdateSchema = z.object({
   status: z.enum(['created', 'active', 'running', 'completed', 'failed', 'cancelled']).optional(),
   intent: z
-    .enum(['RESEARCH', 'INBOX', 'PLANNING', 'APPLICATION', 'GENERAL'])
+    .enum(['RESEARCH', 'INBOX', 'PLANNING', 'APPLICATION', 'GENERAL', 'DESKTOP'])
     .optional(),
   summary: z.string().optional(),
   metadata: z.record(z.unknown()).optional(),
@@ -21,6 +21,7 @@ export const IntentClassificationSchema = z.enum([
   'PLANNING',
   'APPLICATION',
   'GENERAL',
+  'DESKTOP',
 ]);
 
 export const ApprovalRequestSchema = z.object({

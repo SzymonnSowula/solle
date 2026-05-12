@@ -10,9 +10,10 @@ const intentKeywords: Record<string, string[]> = {
   PLANNING: ['plan', 'schedule', 'calendar', 'organize', 'meeting', 'event'],
   APPLICATION: ['app', 'application', 'open', 'launch', 'use'],
   GENERAL: ['general', 'help', 'question', 'what', 'how', 'explain'],
+  DESKTOP: ['desktop', 'organize', 'files', 'folder', 'clean up', 'sort', 'desktop', 'tidy', 'arrange', 'move files'],
 };
 
-export type IntentClassification = 'RESEARCH' | 'INBOX' | 'PLANNING' | 'APPLICATION' | 'GENERAL';
+export type IntentClassification = 'RESEARCH' | 'INBOX' | 'PLANNING' | 'APPLICATION' | 'GENERAL' | 'DESKTOP';
 
 async function callOpenAI(prompt: string, temperature = 0.7, maxTokens = 2000): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -58,7 +59,7 @@ export async function coordinatorAgent(
   let classification: IntentClassification = 'GENERAL';
 
   try {
-    const prompt = `Classify the user intent into exactly one of these categories: RESEARCH, INBOX, PLANNING, APPLICATION, GENERAL.
+    const prompt = `Classify the user intent into exactly one of these categories: RESEARCH, INBOX, PLANNING, APPLICATION, GENERAL, DESKTOP.
 
 User input: "${userIntent}"
 
@@ -66,7 +67,7 @@ Respond with only the category name, nothing else.`;
 
     const text = (await callOpenAI(prompt, 0.2)).toUpperCase();
 
-    if (['RESEARCH', 'INBOX', 'PLANNING', 'APPLICATION', 'GENERAL'].includes(text)) {
+    if (['RESEARCH', 'INBOX', 'PLANNING', 'APPLICATION', 'GENERAL', 'DESKTOP'].includes(text)) {
       classification = text as IntentClassification;
       log.info(`LLM classified intent as: ${classification}`);
     } else {

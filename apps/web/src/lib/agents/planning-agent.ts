@@ -90,7 +90,7 @@ export async function planningAgent(
       const createInput: CalendarToolInput = {
         action: 'create',
         summary: query.length > 50 ? 'Scheduled event' : query,
-        description: `Created by Solli planning agent for: ${query}`,
+        description: `Created by Volle planning agent for: ${query}`,
         startTime: tomorrow.toISOString(),
         endTime: endTime.toISOString(),
       };

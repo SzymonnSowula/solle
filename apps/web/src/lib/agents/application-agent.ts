@@ -101,7 +101,7 @@ Professional Summary:`;
 
       result.documents.push({
         type: 'cv',
-        title: `CV Summary — ${targetRole}`,
+        title: `CV Summary - ${targetRole}`,
         content: cvContent,
         targetRole,
         targetCompany,
@@ -151,7 +151,7 @@ Cover Letter:`;
 
       result.documents.push({
         type: 'cover_letter',
-        title: `Cover Letter — ${targetRole}${targetCompany ? ` @ ${targetCompany}` : ''}`,
+        title: `Cover Letter - ${targetRole}${targetCompany ? ` @ ${targetCompany}` : ''}`,
         content: coverContent,
         targetRole,
         targetCompany,

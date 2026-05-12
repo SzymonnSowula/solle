@@ -20,10 +20,10 @@ export function TranscriptPanel({ transcript, agentResponse }: TranscriptPanelPr
       )}
       {agentResponse && (
         <div className="flex gap-3">
-          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50">
-            <Bot className="h-3 w-3 text-teal-600" />
+          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-50">
+            <Bot className="h-3 w-3 text-red-600" />
           </div>
-          <div className="flex-1 rounded-xl rounded-tl-sm bg-teal-50 px-4 py-2.5 border border-teal-100">
+          <div className="flex-1 rounded-xl rounded-tl-sm bg-red-50 px-4 py-2.5 border border-red-100">
             <p className="text-sm text-ink-700">{agentResponse.trim()}</p>
           </div>
         </div>

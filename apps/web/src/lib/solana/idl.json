@@ -30,7 +30,32 @@
         },
         {
           "name": "session",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "session.session_id",
+                "account": "Session"
+              }
+            ]
+          }
         },
         {
           "name": "receipt",
@@ -333,7 +358,32 @@
         },
         {
           "name": "session",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "session.session_id",
+                "account": "Session"
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -343,6 +393,64 @@
         },
         {
           "name": "actual_cost",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw",
+      "docs": [
+        "Withdraw SOL from agent treasury (owner only)"
+      ],
+      "discriminator": [
+        183,
+        18,
+        70,
+        156,
+        148,
+        109,
+        161,
+        34
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
           "type": "u64"
         }
       ]
@@ -419,6 +527,11 @@
       "code": 6005,
       "name": "InsufficientBalance",
       "msg": "Insufficient balance"
+    },
+    {
+      "code": 6006,
+      "name": "ArithmeticOverflow",
+      "msg": "Arithmetic overflow"
     }
   ],
   "types": [

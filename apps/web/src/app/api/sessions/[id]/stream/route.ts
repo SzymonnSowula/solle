@@ -17,7 +17,10 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       // Send initial connection event
       send({ type: 'connected', sessionId: id });
 
-      const redis = getRedis();
+      // SECURITY: Create a DEDICATED Redis client for subscriptions.
+      // A Redis client in subscribe mode cannot execute any other commands.
+      // Using the shared global client would break all other Redis operations.
+      const redis = getRedis().duplicate();
       const channel = `session:${id}:events`;
 
       const messageHandler = (receivedChannel: string, message: string) => {
@@ -45,11 +48,12 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         send({ type: 'ping' });
       }, 15000);
 
-      // Clean up on close
+      // Clean up on close — disconnect the duplicate Redis client
       const cleanup = () => {
         clearInterval(interval);
         redis.removeListener('message', messageHandler);
         redis.unsubscribe(channel).catch(() => {});
+        redis.disconnect();
       };
 
       // Close stream after 5 minutes to prevent leaks

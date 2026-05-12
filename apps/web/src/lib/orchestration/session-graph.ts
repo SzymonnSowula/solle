@@ -3,6 +3,7 @@ import { researchAgent, type ResearchResult } from '../agents/research-agent';
 import { inboxAgent, type InboxResult } from '../agents/inbox-agent';
 import { planningAgent, type PlanningResult } from '../agents/planning-agent';
 import { applicationAgent, type ApplicationResult } from '../agents/application-agent';
+import { desktopAgent } from '../agents/desktop-agent';
 import { summaryAgent } from '../agents/summary-agent';
 import {
   analyzeIntentAndNeeds,
@@ -25,6 +26,7 @@ export interface SessionGraphState {
   inboxResults?: InboxResult;
   planningResults?: PlanningResult;
   applicationResults?: ApplicationResult;
+  desktopPlan?: import('@solli/shared').FileOperationPlan;
   summary?: string;
   error?: string;
   conversationHistory: ConversationMessage[];
@@ -120,6 +122,8 @@ export async function runSessionGraph(
       state.planningResults = await planningAgent(sessionId, refinedInput, store);
     } else if (intent === 'APPLICATION') {
       state.applicationResults = await applicationAgent(sessionId, refinedInput, store);
+    } else if (intent === 'DESKTOP') {
+      state.desktopPlan = await desktopAgent(sessionId, refinedInput, store);
     } else {
       log.info(`Intent ${intent} routed directly to summary`);
       await store.addEvent({

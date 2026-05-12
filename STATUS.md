@@ -1,4 +1,4 @@
-# Status Projektu — Solli
+# Status Projektu - Solli
 
 > Ostatnia aktualizacja: 2026-05-04
 
@@ -14,7 +14,7 @@
 - **Baza danych**: PostgreSQL + pgvector (via Docker)
 - **Cache / PubSub**: Redis (via Docker)
 - **Workers**: Playwright browser worker + Google APIs worker
-- **Produkt**: Voice-Native Process Operator — nie "ChatGPT z voice", tylko agent prowadzący usera przez cały workflow głosem
+- **Produkt**: Voice-Native Process Operator - nie "ChatGPT z voice", tylko agent prowadzący usera przez cały workflow głosem
 
 ### Aplikacja Webowa (`apps/web/`)
 
@@ -41,7 +41,7 @@
 
 | Strona | Status | Opis |
 |--------|--------|------|
-| `/` — Landing | ✅ | Design w stylu Perplexity (jasny, beżowy, typografia Inter) |
+| `/` - Landing | ✅ | Design w stylu Perplexity (jasny, beżowy, typografia Inter) |
 | `/session/[id]` | ✅ | Szczegóły sesji z live SSE timeline, wynikami, summary, voice |
 | Wallet Connect | ✅ | Solana (Phantom, Solflare) via `@solana/wallet-adapter` |
 | Voice Panel | ✅ | WebSocket do ElevenLabs, MediaRecorder z mikrofonu, transcript + audio playback |
@@ -50,7 +50,7 @@
 
 - **Kolorystyka**: Jasna, ciepła (cream/white/teal/ink)
 - **Typografia**: Inter
-- **Brak gradientów, brak emoji** — tylko Lucide SVG icons
+- **Brak gradientów, brak emoji** - tylko Lucide SVG icons
 - **Responsive**: Mobile + desktop
 
 #### Orchestracja (własna, bez LangGraph)
@@ -88,14 +88,14 @@
 | Session PDA | ✅ | Onchain account: owner, session_id, query, intent, status, estimated_cost, actual_cost, timestamps |
 | Receipt PDA | ✅ | Onchain account: session ref, hash, cost, timestamp |
 | Agent Treasury PDA | ✅ | User wpłaca SOL do treasury, agent ma budżet na tool calls |
-| x402 stub | ✅ | `lib/x402.ts` — payment headers, tool costs, verification |
+| x402 stub | ✅ | `lib/x402.ts` - payment headers, tool costs, verification |
 | x402 in tool calls | ✅ | `browser-search.tool.ts` wysyła x402 headers do worker-browser |
 | Cost tracking (DB) | ✅ | `sessions.estimated_cost_sol`, `sessions.actual_cost_sol`, `tasks.cost_sol` |
 | Cost estimation | ✅ | `coordinatorAgent` estymuje koszt na podstawie intentu |
 | Cost Breakdown UI | ✅ | `CostBreakdown` component na stronie sesji |
 | Devnet deploy scripts | ✅ | `deploy-devnet.sh`, `verify-devnet.sh` w `programs/solli/scripts/` |
 | IDL | ✅ | Wygenerowane, skopiowane do `apps/web/src/lib/solana/idl.json` |
-| Klient TS | ✅ | `lib/solana/anchor-client.ts` — treasury, session, receipt |
+| Klient TS | ✅ | `lib/solana/anchor-client.ts` - treasury, session, receipt |
 | Wallet adapter | ✅ | Phantom + Solflare |
 | Receipt hash | ✅ | SHA-256 hash z sesji |
 | On-chain memo | ✅ | Frontend buduje tx, podpisuje przez wallet, wysyła na Solanę (devnet), zapisuje signature |
@@ -109,7 +109,7 @@
 | `apps/api/` (Fastify) | ❌ Usunięte | Zastąpione Next.js Route Handlers |
 | `apps/desktop/` (Tauri) | ❌ Usunięte | Zastąpione czystą webówką |
 | `solli-nextjs/` (Electron) | ❌ Usunięte | Zastąpione `apps/web/` |
-| `packages/agent-core/` (LangGraph) | 🟡 Legacy | Nowa orchestracja jest w `apps/web/src/lib/agents/` — LangGraph zostawiony jako reference ale nieużywany |
+| `packages/agent-core/` (LangGraph) | 🟡 Legacy | Nowa orchestracja jest w `apps/web/src/lib/agents/` - LangGraph zostawiony jako reference ale nieużywany |
 
 ---
 
@@ -122,7 +122,7 @@ Zmienne w `.env.local` (wymagane do działania):
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-4o-mini
 
-# ElevenLabs (dla voice — opcjonalne)
+# ElevenLabs (dla voice - opcjonalne)
 ELEVENLABS_API_KEY=...
 ELEVENLABS_AGENT_ID=...
 
@@ -161,33 +161,33 @@ cd /home/szymon/solli && pnpm dev
 
 ### MVP Blockers (muszą być gotowe na demo)
 
-- [x] **Sharp use case** — Voice-Native Process Operator: user mówi "pomóż mi aplikować", agent dopytuje, wykonuje kroki, zamyka temat
-- [x] **Realna integracja ElevenLabs** — WebSocket + MediaRecorder działa, voice jest primary interface
-- [x] **On-chain transaction** — program Anchor + frontend podpisuje i wysyła realną tx na Solana
-- [x] **On-chain Session PDA** — każda sesja to onchain account z cost tracking
-- [x] **On-chain Receipt PDA** — hash wyników jako proof-of-action onchain
-- [x] **Agent Treasury PDA** — user wpłaca SOL, agent ma budżet na tool calls
-- [x] **x402 stub** — symulowane koszty tool calls, payment headers
-- [x] **x402 w tool calls** — realne payment headers w HTTP do worker-browser
-- [x] **Cost tracking (DB)** — `estimated_cost_sol`, `actual_cost_sol`, `tasks.cost_sol`
-- [x] **Cost Breakdown UI** — panel kosztów na stronie sesji
-- [x] **Demo Simulation jako rozmowa** — transkrypcja dialogu user-agent z tool calls i kosztami
-- [x] **Landing page** — "Talk through your work" zamiast "What do you want to accomplish"
-- [x] **SSE live updates** — timeline aktualizuje się na żywo
-- [x] **Onboarding** — 4-krokowy modal dla nowych użytkowników
-- [x] **Hydration fix** — ClientOnly wrapper dla wallet components
-- [x] **Devnet deploy scripts** — gotowe skrypty do deployu na devnet
-- [ ] **Worker-browser** — przetestować czy Playwright scrape działa (może wymagać mock)
-- [ ] **Deploy programu** — zdeployować program Anchor na devnet (wymaga terminala + funduszy)
+- [x] **Sharp use case** - Voice-Native Process Operator: user mówi "pomóż mi aplikować", agent dopytuje, wykonuje kroki, zamyka temat
+- [x] **Realna integracja ElevenLabs** - WebSocket + MediaRecorder działa, voice jest primary interface
+- [x] **On-chain transaction** - program Anchor + frontend podpisuje i wysyła realną tx na Solana
+- [x] **On-chain Session PDA** - każda sesja to onchain account z cost tracking
+- [x] **On-chain Receipt PDA** - hash wyników jako proof-of-action onchain
+- [x] **Agent Treasury PDA** - user wpłaca SOL, agent ma budżet na tool calls
+- [x] **x402 stub** - symulowane koszty tool calls, payment headers
+- [x] **x402 w tool calls** - realne payment headers w HTTP do worker-browser
+- [x] **Cost tracking (DB)** - `estimated_cost_sol`, `actual_cost_sol`, `tasks.cost_sol`
+- [x] **Cost Breakdown UI** - panel kosztów na stronie sesji
+- [x] **Demo Simulation jako rozmowa** - transkrypcja dialogu user-agent z tool calls i kosztami
+- [x] **Landing page** - "Talk through your work" zamiast "What do you want to accomplish"
+- [x] **SSE live updates** - timeline aktualizuje się na żywo
+- [x] **Onboarding** - 4-krokowy modal dla nowych użytkowników
+- [x] **Hydration fix** - ClientOnly wrapper dla wallet components
+- [x] **Devnet deploy scripts** - gotowe skrypty do deployu na devnet
+- [ ] **Worker-browser** - przetestować czy Playwright scrape działa (może wymagać mock)
+- [ ] **Deploy programu** - zdeployować program Anchor na devnet (wymaga terminala + funduszy)
 
 ### Nice to Have (po MVP)
 
-- [ ] **Auth** — obecnie wszystko jako `anonymous` user
-- [ ] **SSE** — podpiąć realny frontend listener pod `/api/sessions/[id]/stream`
-- [ ] **Inbox / Planning** — podłączyć worker-google (Gmail + Calendar)
-- [ ] **LangGraph** — rozważyć powrót gdy upstream będzie stable
-- [ ] **Tests** — Vitest skonfigurowany, brak testów
-- [ ] **Dark mode** — obecnie tylko light mode
+- [ ] **Auth** - obecnie wszystko jako `anonymous` user
+- [ ] **SSE** - podpiąć realny frontend listener pod `/api/sessions/[id]/stream`
+- [ ] **Inbox / Planning** - podłączyć worker-google (Gmail + Calendar)
+- [ ] **LangGraph** - rozważyć powrót gdy upstream będzie stable
+- [ ] **Tests** - Vitest skonfigurowany, brak testów
+- [ ] **Dark mode** - obecnie tylko light mode
 
 ---
 
@@ -205,7 +205,7 @@ cd /home/szymon/solli && pnpm dev
 
 ## Decyzje architektoniczne
 
-1. **LangGraph został porzucony** — upstream typy były broken, nie dało się zbudować. Zastąpiliśmy własną, prostą async pipeline.
-2. **Fastify API usunięty** — Next.js Route Handlers są wystarczające i redukują complexity.
-3. **Tauri/Electron usunięte** — user chce wyłącznie webówkę.
-4. **OpenAI zamiast LangChain** — dla MVP prostsze jest użycie surowego fetch do OpenAI API.
+1. **LangGraph został porzucony** - upstream typy były broken, nie dało się zbudować. Zastąpiliśmy własną, prostą async pipeline.
+2. **Fastify API usunięty** - Next.js Route Handlers są wystarczające i redukują complexity.
+3. **Tauri/Electron usunięte** - user chce wyłącznie webówkę.
+4. **OpenAI zamiast LangChain** - dla MVP prostsze jest użycie surowego fetch do OpenAI API.

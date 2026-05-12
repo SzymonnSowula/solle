@@ -130,6 +130,26 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Connected accounts table
+-- Stores OAuth tokens for third-party integrations per user
+CREATE TABLE IF NOT EXISTS connected_accounts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    provider_account_id TEXT,
+    access_token TEXT NOT NULL,
+    refresh_token TEXT,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    scope TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    metadata JSONB DEFAULT '{}',
+    UNIQUE(user_id, provider)
+);
+
+CREATE INDEX idx_connected_accounts_user_id ON connected_accounts(user_id);
+CREATE INDEX idx_connected_accounts_provider ON connected_accounts(provider);
+
 CREATE TRIGGER update_sessions_updated_at
     BEFORE UPDATE ON sessions
     FOR EACH ROW

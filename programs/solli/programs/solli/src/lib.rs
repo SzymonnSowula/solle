@@ -42,10 +42,61 @@ pub mod solli {
             ],
         )?;
 
-        treasury.balance += amount;
-        treasury.total_deposited += amount;
+        // SECURITY: Use checked arithmetic to prevent overflow
+        treasury.balance = treasury
+            .balance
+            .checked_add(amount)
+            .ok_or(SolliError::ArithmeticOverflow)?;
+        treasury.total_deposited = treasury
+            .total_deposited
+            .checked_add(amount)
+            .ok_or(SolliError::ArithmeticOverflow)?;
 
-        msg!("Funded {} lamports. New balance: {}", amount, treasury.balance);
+        msg!(
+            "Funded {} lamports. New balance: {}",
+            amount,
+            treasury.balance
+        );
+        Ok(())
+    }
+
+    /// Withdraw SOL from agent treasury (owner only)
+    pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
+        let treasury = &mut ctx.accounts.treasury;
+
+        require!(treasury.balance >= amount, SolliError::InsufficientBalance);
+
+        // SECURITY: Use checked arithmetic
+        treasury.balance = treasury
+            .balance
+            .checked_sub(amount)
+            .ok_or(SolliError::InsufficientBalance)?;
+
+        // Transfer SOL from treasury PDA back to owner using PDA signer seeds
+        let owner_key = ctx.accounts.owner.key();
+        let seeds: &[&[u8]] = &[b"treasury", owner_key.as_ref(), &[treasury.bump]];
+        let signer_seeds = &[seeds];
+
+        let ix = anchor_lang::solana_program::system_instruction::transfer(
+            &treasury.key(),
+            &ctx.accounts.owner.key(),
+            amount,
+        );
+        anchor_lang::solana_program::program::invoke_signed(
+            &ix,
+            &[
+                treasury.to_account_info(),
+                ctx.accounts.owner.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+            signer_seeds,
+        )?;
+
+        msg!(
+            "Withdrawn {} lamports. Remaining balance: {}",
+            amount,
+            treasury.balance
+        );
         Ok(())
     }
 
@@ -59,9 +110,19 @@ pub mod solli {
 
         require!(treasury.balance >= cost, SolliError::InsufficientBalance);
 
-        treasury.balance -= cost;
-        treasury.total_spent += cost;
-        treasury.session_count += 1;
+        // SECURITY: Use checked arithmetic to prevent overflow/underflow
+        treasury.balance = treasury
+            .balance
+            .checked_sub(cost)
+            .ok_or(SolliError::InsufficientBalance)?;
+        treasury.total_spent = treasury
+            .total_spent
+            .checked_add(cost)
+            .ok_or(SolliError::ArithmeticOverflow)?;
+        treasury.session_count = treasury
+            .session_count
+            .checked_add(1)
+            .ok_or(SolliError::ArithmeticOverflow)?;
 
         msg!(
             "Session {} cost: {} lamports. Remaining: {}",
@@ -111,7 +172,8 @@ pub mod solli {
         let clock = Clock::get()?;
 
         require!(
-            ["pending", "researching", "completed", "approved", "failed"].contains(&new_status.as_str()),
+            ["pending", "researching", "completed", "approved", "failed"]
+                .contains(&new_status.as_str()),
             SolliError::InvalidStatus
         );
 
@@ -129,16 +191,16 @@ pub mod solli {
     }
 
     /// Create a receipt PDA linked to a session
-    pub fn create_receipt(
-        ctx: Context<CreateReceipt>,
-        hash: String,
-    ) -> Result<()> {
+    pub fn create_receipt(ctx: Context<CreateReceipt>, hash: String) -> Result<()> {
         let receipt = &mut ctx.accounts.receipt;
         let session = &ctx.accounts.session;
         let clock = Clock::get()?;
 
         require!(hash.len() <= 64, SolliError::HashTooLong);
-        require!(session.status == "completed" || session.status == "approved", SolliError::SessionNotCompleted);
+        require!(
+            session.status == "completed" || session.status == "approved",
+            SolliError::SessionNotCompleted
+        );
 
         receipt.session = session.key();
         receipt.owner = session.owner;
@@ -147,7 +209,11 @@ pub mod solli {
         receipt.timestamp = clock.unix_timestamp;
         receipt.bump = ctx.bumps.receipt;
 
-        msg!("Receipt created for session: {} cost: {}", session.key(), receipt.cost);
+        msg!(
+            "Receipt created for session: {} cost: {}",
+            session.key(),
+            receipt.cost
+        );
         Ok(())
     }
 }
@@ -173,6 +239,22 @@ pub struct InitializeTreasury<'info> {
 
 #[derive(Accounts)]
 pub struct FundAgent<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"treasury", owner.key().as_ref()],
+        bump = treasury.bump,
+        constraint = treasury.owner == owner.key()
+    )]
+    pub treasury: Account<'info, AgentTreasury>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Withdraw<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
 
@@ -219,22 +301,34 @@ pub struct CreateSession<'info> {
     pub system_program: Program<'info, System>,
 }
 
+// SECURITY: Added PDA seed validation to prevent account spoofing
 #[derive(Accounts)]
 pub struct UpdateSession<'info> {
-    #[account(mut, constraint = session.owner == owner.key())]
+    #[account(mut)]
     pub owner: Signer<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"session", owner.key().as_ref(), &session.session_id.to_le_bytes()],
+        bump = session.bump,
+        constraint = session.owner == owner.key()
+    )]
     pub session: Account<'info, Session>,
 }
 
+// SECURITY: Added PDA seed validation to prevent account spoofing
 #[derive(Accounts)]
 #[instruction(hash: String)]
 pub struct CreateReceipt<'info> {
-    #[account(mut, constraint = session.owner == owner.key())]
+    #[account(mut)]
     pub owner: Signer<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"session", owner.key().as_ref(), &session.session_id.to_le_bytes()],
+        bump = session.bump,
+        constraint = session.owner == owner.key()
+    )]
     pub session: Account<'info, Session>,
 
     #[account(
@@ -311,4 +405,6 @@ pub enum SolliError {
     SessionNotCompleted,
     #[msg("Insufficient balance")]
     InsufficientBalance,
+    #[msg("Arithmetic overflow")]
+    ArithmeticOverflow,
 }
