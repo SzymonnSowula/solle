@@ -242,7 +242,7 @@ function Step({ n, text }: { n: number; text: string }) {
   );
 }
 
-function NavPill({ href, label }: { href: string; label: string }) {
+function NavPill({ href, label }: { href: any; label: string }) {
   return (
     <Link href={href} className="px-4 py-2 rounded-full border border-white/10 text-sm text-neutral-300 hover:text-white hover:border-red-500/30 transition-colors">
       {label}
