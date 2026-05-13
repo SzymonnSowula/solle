@@ -46,17 +46,22 @@ echo "$README" >> "$CODEBASE_NOTE"
 echo "\`\`\`" >> "$CODEBASE_NOTE"
 
 # ----------------------------------------
-# 2. Update Daily Log (append new commits)
+# 2. Update Daily Log (regenerate last 14 days)
 # ----------------------------------------
 TODAY=$(date "+%Y-%m-%d %H:%M:%S")
-NEW_COMMITS=$(git log --since="24 hours ago" --format="- \`%h\` %s — %an, %ar" || echo "")
+COMMITS=$(git log --since="14 days ago" --format="- \`%h\` %s — %an, %ar")
 
-if [ -n "$NEW_COMMITS" ]; then
-  {
-    echo ""
-    echo "## $TODAY"
-    echo "$NEW_COMMITS"
-  } >> "$LOG_NOTE"
+cat > "$LOG_NOTE" << EOF
+# Daily Log
+
+> Auto-generated from git commits. Last sync: $TODAY
+
+EOF
+
+if [ -n "$COMMITS" ]; then
+  echo "$COMMITS" >> "$LOG_NOTE"
+else
+  echo "_No commits in the last 14 days._" >> "$LOG_NOTE"
 fi
 
 echo "=== Sync complete ==="

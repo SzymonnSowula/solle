@@ -24,8 +24,16 @@ cd ../..
 echo "-> Generating mock sales data"
 python3 data/mock/generate_sales.py
 
+# Install Obsidian auto-sync hook
+echo "-> Installing Obsidian git hook"
+mkdir -p .git/hooks
+cp scripts/sync-obsidian.sh .git/hooks/post-commit 2>/dev/null || true
+chmod +x .git/hooks/post-commit
+bash scripts/sync-obsidian.sh
+
 echo "=== Setup complete ==="
 echo ""
 echo "Next steps:"
 echo "  1. Start backend:   bash scripts/dev-backend.sh"
 echo "  2. Start client:    bash scripts/dev-client.sh"
+echo "  3. Open Obsidian:   Projects/Volle/00 - Index.md"
