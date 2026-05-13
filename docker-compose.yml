@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: volle-postgres
+    environment:
+      POSTGRES_USER: volle
+      POSTGRES_PASSWORD: volle
+      POSTGRES_DB: volle
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U volle"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: volle-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:

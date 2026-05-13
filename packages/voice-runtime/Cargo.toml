@@ -1,0 +1,19 @@
+[package]
+name = "volle-voice-runtime"
+version = "0.1.0"
+edition = "2021"
+authors = ["Volle Team"]
+description = "Shared voice pipeline for Volle desktop"
+
+[dependencies]
+cpal = "0.15"
+opus = "0.3"
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.23"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+log = "0.4"
+
+[dev-dependencies]
+env_logger = "0.11"
