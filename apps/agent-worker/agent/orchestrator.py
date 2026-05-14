@@ -11,8 +11,6 @@ import json
 from datetime import date, timedelta
 from typing import Any, TypedDict
 
-from langgraph.graph import END, StateGraph
-
 from . import llm
 from . import mcp_client
 
@@ -410,65 +408,11 @@ def build_card(state: GraphState) -> GraphState:
 
 
 # ---------------------------------------------------------------------------
-# Graph builder
+# Public entry point
 # ---------------------------------------------------------------------------
-
-def build_orchestrator():
-    """Compile the LangGraph state machine."""
-    builder = StateGraph(GraphState)
-
-    builder.add_node("load_memory", load_memory)
-    builder.add_node("understand", understand)
-    builder.add_node("call_tools", call_tools)
-    builder.add_node("generate_response", generate_response)
-    builder.add_node("build_card", build_card)
-
-    builder.set_entry_point("load_memory")
-    builder.add_edge("load_memory", "understand")
-    builder.add_conditional_edges(
-        "understand",
-        route,
-        {"tool_calling": "call_tools", "responding": "generate_response"},
-    )
-    builder.add_edge("call_tools", "generate_response")
-    builder.add_edge("generate_response", "build_card")
-    builder.add_edge("build_card", END)
-
-    return builder.compile()
-
-
-graph = build_orchestrator()
-
-
-# ---------------------------------------------------------------------------
-# Public entry points
-# ---------------------------------------------------------------------------
-
-async def run_orchestrator(user_text: str) -> dict[str, Any]:
-    """Invoke the graph with a single user utterance and return the result dict.
-
-    Returns:
-        {"text": str, "card": dict | None, "intent": str}
-    """
-    initial_state: GraphState = {
-        "messages": [{"role": "user", "content": user_text}],
-        "current_intent": "",
-        "tool_calls": [],
-        "tool_results": [],
-        "response_text": "",
-        "visual_card": None,
-        "memory_context": "",
-    }
-    result = await graph.ainvoke(initial_state)
-    return {
-        "text": result.get("response_text", ""),
-        "card": result.get("visual_card"),
-        "intent": result.get("current_intent", ""),
-    }
-
 
 async def run_pipeline(user_text: str) -> dict[str, Any]:
-    """Sequential pipeline fallback when LangGraph misbehaves with async nodes."""
+    """Run the agent pipeline: understand -> tools -> respond -> card."""
     state: GraphState = {
         "messages": [{"role": "user", "content": user_text}],
         "current_intent": "",
