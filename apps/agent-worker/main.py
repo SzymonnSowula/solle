@@ -10,6 +10,8 @@ from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
 from agent import llm
+from agent import mcp_client
+from agent.orchestrator import run_orchestrator
 
 CSV_PATH = Path(__file__).resolve().parents[2] / "data" / "mock" / "sales_data.csv"
 
@@ -19,7 +21,10 @@ async def lifespan(app: FastAPI):
     print("Volle Agent Worker starting...")
     print(f"Mock data: {CSV_PATH}")
     print(f"LLM ready: {'YES' if llm.API_KEY else 'NO (mock fallback)'}")
+    await mcp_client.registry.start_all()
+    print(f"MCP servers: {len(mcp_client.registry.list_tools())} tools available")
     yield
+    await mcp_client.registry.stop_all()
     print("Volle Agent Worker shutting down...")
 
 
@@ -149,28 +154,7 @@ async def voice_ws(websocket: WebSocket):
             if msg.get("type") != "utterance":
                 continue
 
-            text = msg.get("text", "").lower()
-            # Intent routing – MVP only handles sales analytics
-            sales_keywords = [
-                "sprzedaż", "sprzedaz", "zamówienia", "zamowienia",
-                "wczoraj", "miesiąc", "miesiac", "porównaj", "porownaj",
-                "podsumowanie", "przychód", "przychod", "obroty", "raport",
-            ]
-            if any(k in text for k in sales_keywords):
-                result = await process_sales_query(msg["text"])
-            else:
-                # General fallback – try LLM if available, otherwise hint
-                llm_text = await llm.chat(
-                    f"Użytkownik powiedział: '{msg['text']}'. "
-                    "Jesteś Volle – business agent. Odpowiedź krótko i naturalnie po polsku. "
-                    "Jeśli użytkownik pyta o coś poza sprzedażą, przyznaj się grzecznie "
-                    "że na razie najlepiej znasz się na analizie danych biznesowych."
-                )
-                result = {
-                    "text": llm_text or "Hej, jestem Volle. Na razie najlepiej pomagam w analizie sprzedaży. Powiedz np. 'porównaj wczorajszą sprzedaż z miesiącem'.",
-                    "card": None,
-                }
-
+            result = await run_orchestrator(msg["text"])
             await websocket.send_json({
                 "type": "response",
                 "text": result["text"],
