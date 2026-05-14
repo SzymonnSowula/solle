@@ -4,12 +4,5 @@ pub mod vad;
 pub mod wake_word;
 pub mod ws_client;
 
-pub struct VoiceRuntime {
-    _marker: (),
-}
-
-impl VoiceRuntime {
-    pub fn new() -> Self {
-        Self { _marker: () }
-    }
-}
+pub use audio::AudioCapture;
+pub use ws_client::VoiceWsClient;

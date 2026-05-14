@@ -7,13 +7,15 @@ description = "Shared voice pipeline for Volle desktop"
 
 [dependencies]
 cpal = "0.15"
-opus = "0.3"
+# opus = "0.3"  # disabled: requires libopus-dev (not available in WSL); enable on Windows
 tokio = { version = "1", features = ["full"] }
 tokio-tungstenite = "0.23"
+futures-util = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1"
 log = "0.4"
+anyhow = "1"
 
 [dev-dependencies]
 env_logger = "0.11"
