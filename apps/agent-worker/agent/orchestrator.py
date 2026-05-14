@@ -306,11 +306,6 @@ def _format_tool_results(intent: str, tool_results: list[Any]) -> str:
     for result in tool_results:
         if isinstance(result, dict) and "error" in result:
             continue
-        if isinstance(result, str):
-            try:
-                result = json.loads(result)
-            except Exception:
-                continue
         if not isinstance(result, dict):
             continue
 
@@ -400,11 +395,6 @@ def build_card(state: GraphState) -> GraphState:
 
     if intent in sales_intents:
         for result in results:
-            if isinstance(result, str):
-                try:
-                    result = json.loads(result)
-                except Exception:
-                    continue
             if not isinstance(result, dict):
                 continue
 
