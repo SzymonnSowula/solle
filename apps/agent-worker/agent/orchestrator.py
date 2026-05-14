@@ -8,6 +8,7 @@ with conditional routing between understanding and (tool_calling | responding).
 from __future__ import annotations
 
 import json
+from datetime import date, timedelta
 from typing import Any, TypedDict
 
 from langgraph.graph import END, StateGraph
@@ -38,6 +39,26 @@ _MEMORY_PROFILE = {
     "common_metrics": ["przychód", "liczba zamówień", "średnia dzienna"],
 }
 
+
+# ---------------------------------------------------------------------------
+# Date helpers
+# ---------------------------------------------------------------------------
+
+def _yesterday() -> date:
+    return date.today() - timedelta(days=1)
+
+
+def _month_start(d: date) -> date:
+    return d.replace(day=1)
+
+
+def _week_start(d: date) -> date:
+    return d - timedelta(days=6)
+
+
+# ---------------------------------------------------------------------------
+# State helpers
+# ---------------------------------------------------------------------------
 
 def _last_user_message(state: GraphState) -> str:
     """Extract the most recent user message content."""
@@ -80,7 +101,7 @@ async def understand(state: GraphState) -> GraphState:
 
     The LLM must return a JSON object with keys:
         intent, needs_tool, tool_name, tool_args, direct_response.
-    If JSON parsing fails the raw LLM text is treated as a direct_response.
+    If JSON parsing fails or LLM is unavailable, fall back to deterministic routing.
     """
     user_msg = _last_user_message(state)
     memory = state.get("memory_context", "")
@@ -108,15 +129,11 @@ async def understand(state: GraphState) -> GraphState:
         return _fallback_understand(user_msg, state)
 
     cleaned = _strip_code_fences(raw)
-    parsed: dict[str, Any] | None = None
     try:
         parsed = json.loads(cleaned)
     except Exception:
-        pass
-
-    if parsed is None:
-        # Fallback: treat raw text as direct response
-        return {**state, "current_intent": "direct", "tool_calls": [], "response_text": raw}
+        # JSON parsing failed – deterministic fallback
+        return _fallback_understand(user_msg, state)
 
     intent = parsed.get("intent", "unknown")
     needs_tool = parsed.get("needs_tool", False)
@@ -137,31 +154,64 @@ async def understand(state: GraphState) -> GraphState:
 
 
 def _fallback_understand(user_msg: str, state: GraphState) -> GraphState:
-    """Keyword-based intent routing when LLM is unavailable."""
+    """Deterministic keyword-based intent routing when LLM is unavailable."""
     text = user_msg.lower()
-    sales_keywords = {"sprzedaż", "zamówienia", "przychód", "revenue", "orders", "miesiąc", "wczoraj", "porównaj", "analiza", "podsumowanie", "ile", "zarobili", "obrót"}
-    research_keywords = {"konkurencja", "rynek", "news", "nowe", "co nowego", "e-commerce", "trendy", "internet", "wyszukaj", "znajdź"}
 
-    if any(k in text for k in sales_keywords):
-        # Determine date range from message (default: yesterday vs month)
-        from datetime import date, timedelta
-        yesterday = date.today() - timedelta(days=1)
-        month_start = yesterday.replace(day=1)
+    sales_kw = {"sprzedaż", "sprzedaz", "zamówienia", "zamowienia", "przychód", "przychod", "obroty", "podsumowanie"}
+    time_kw = {"wczoraj", "miesiąc", "miesiac", "tydzień", "tydzien"}
+    compare_kw = {"porównaj", "porownaj", "compare"}
+    search_kw = {"wyszukaj", "search", "znajdź", "znajdz", "internet"}
+
+    has_sales = any(k in text for k in sales_kw)
+    has_time = any(k in text for k in time_kw)
+    has_compare = any(k in text for k in compare_kw)
+    has_search = any(k in text for k in search_kw)
+
+    y = _yesterday()
+    m_start = _month_start(y)
+    w_start = _week_start(y)
+
+    if has_sales and has_time:
+        if "wczoraj" in text:
+            date_from = str(y)
+            date_to = str(y)
+        elif "miesiąc" in text or "miesiac" in text:
+            date_from = str(m_start)
+            date_to = str(y)
+        elif "tydzień" in text or "tydzien" in text:
+            date_from = str(w_start)
+            date_to = str(y)
+        else:
+            date_from = str(y)
+            date_to = str(y)
         return {
             **state,
-            "current_intent": "sales",
+            "current_intent": "sales_summary",
             "tool_calls": [
-                {"name": "compare_periods", "args": {
-                    "period_a_start": str(month_start),
-                    "period_a_end": str(yesterday),
-                    "period_b_start": str(month_start),
-                    "period_b_end": str(yesterday),
-                }}
+                {"name": "get_sales_summary", "args": {"date_from": date_from, "date_to": date_to}}
             ],
             "response_text": "",
         }
 
-    if any(k in text for k in research_keywords):
+    if has_compare:
+        return {
+            **state,
+            "current_intent": "compare",
+            "tool_calls": [
+                {
+                    "name": "compare_periods",
+                    "args": {
+                        "period_a_start": str(y),
+                        "period_a_end": str(y),
+                        "period_b_start": str(m_start),
+                        "period_b_end": str(y),
+                    },
+                }
+            ],
+            "response_text": "",
+        }
+
+    if has_search:
         return {
             **state,
             "current_intent": "research",
@@ -169,12 +219,15 @@ def _fallback_understand(user_msg: str, state: GraphState) -> GraphState:
             "response_text": "",
         }
 
-    # Default: direct response with a polite fallback
     return {
         **state,
         "current_intent": "direct",
         "tool_calls": [],
-        "response_text": "Niestety nie mam teraz połączenia z modelem językowym, więc nie mogę dokładnie przeanalizować Twojego pytania. Spróbuj zapytać o sprzedaż lub konkurencję.",
+        "response_text": (
+            "Niestety nie mam teraz połączenia z modelem językowym, "
+            "więc nie mogę dokładnie przeanalizować Twojego pytania. "
+            "Spróbuj zapytać o sprzedaż lub konkurencję."
+        ),
     }
 
 
@@ -261,27 +314,38 @@ def _format_tool_results(intent: str, tool_results: list[Any]) -> str:
         if not isinstance(result, dict):
             continue
 
-        # Sales / compare_periods
+        # compare_periods
         if "period_a" in result and "period_b" in result:
-            a = result["period_a"]["stats"]
-            b = result["period_b"]["stats"]
+            a_stats = result["period_a"]["stats"]
+            b_stats = result["period_b"]["stats"]
             diff = result.get("differences", {})
             rev_pct = diff.get("revenue_pct")
+            ord_pct = diff.get("orders_pct")
+            lines = [
+                f"W okresie {result['period_a']['start']} do {result['period_a']['end']} "
+                f"mieliśmy {a_stats['orders']} zamówień na kwotę {a_stats['revenue']:,.0f} zł."
+            ]
             if rev_pct is not None:
                 trend = "wyżej" if rev_pct > 0 else "niżej"
-                return (
-                    f"W okresie {result['period_a']['start']} do {result['period_a']['end']} "
-                    f"mieliśmy {a['orders']} zamówień na kwotę {a['revenue']:,.0f} zł. "
+                lines.append(
                     f"To o {abs(rev_pct):.0f} procent {trend} niż w porównywanym okresie."
                 )
-            return f"Porównanie okresów: {a['orders']} zamówień vs {b['orders']} zamówień."
+            elif ord_pct is not None:
+                trend = "więcej" if ord_pct > 0 else "mniej"
+                lines.append(
+                    f"To o {abs(ord_pct):.0f} procent {trend} zamówień niż w porównywanym okresie."
+                )
+            return " ".join(lines)
 
-        # Sales summary
+        # get_sales_summary
         if "total_orders" in result:
+            top_products = result.get("top_products_by_revenue", {})
+            top_name = list(top_products.keys())[0] if top_products else "brak danych"
             return (
-                f"W tym okresie zrealizowaliśmy {result['total_orders']} zamówień "
+                f"W okresie od {result['date_from']} do {result['date_to']} "
+                f"zrealizowaliśmy {result['total_orders']} zamówień "
                 f"na kwotę {result['total_revenue']:,.0f} zł. "
-                f"Top produkt: {list(result.get('top_products_by_revenue', {}).keys())[0] if result.get('top_products_by_revenue') else 'brak danych'}."
+                f"Najlepszy produkt: {top_name}."
             )
 
         # Web search
@@ -293,6 +357,37 @@ def _format_tool_results(intent: str, tool_results: list[Any]) -> str:
     return "Mam dane, ale nie mogę ich teraz sformatować."
 
 
+# ---------------------------------------------------------------------------
+# Card builder helpers
+# ---------------------------------------------------------------------------
+
+def _card_from_sales_summary(result: dict[str, Any]) -> dict[str, Any]:
+    top_products = result.get("top_products_by_revenue", {})
+    top_name = list(top_products.keys())[0] if top_products else "brak danych"
+    return {
+        "title": "Podsumowanie sprzedaży",
+        "metrics": [
+            {"label": "Zamówienia", "value": f"{result['total_orders']}"},
+            {"label": "Przychód", "value": f"{result['total_revenue']:,.0f} PLN"},
+            {"label": "Zrealizowane", "value": f"{result.get('completed_orders', 0)}"},
+            {"label": "Top produkt", "value": top_name},
+        ],
+    }
+
+
+def _card_from_compare_periods(result: dict[str, Any]) -> dict[str, Any]:
+    a = result["period_a"]["stats"]
+    b = result["period_b"]["stats"]
+    diff = result.get("differences", {})
+    return {
+        "title": "Porównanie okresów",
+        "metrics": [
+            {"label": "Okres A (przychód)", "value": f"{a['revenue']:,.0f} PLN"},
+            {"label": "Okres B (przychód)", "value": f"{b['revenue']:,.0f} PLN"},
+            {"label": "Różnica przychodu", "value": f"{diff.get('revenue_pct', 0):+.0f}%"},
+            {"label": "Różnica zamówień", "value": f"{diff.get('orders_pct', 0):+.0f}%"},
+        ],
+    }
 
 
 def build_card(state: GraphState) -> GraphState:
@@ -301,51 +396,25 @@ def build_card(state: GraphState) -> GraphState:
     results = state.get("tool_results", [])
 
     card: dict[str, Any] | None = None
-    sales_intents = {"sales", "analytics", "sprzedaż", "analiza", "revenue", "orders", "podsumowanie"}
+    sales_intents = {"sales", "sales_summary", "analytics", "sprzedaż", "analiza", "revenue", "orders", "podsumowanie", "compare"}
 
     if intent in sales_intents:
-        data: dict[str, Any] | None = None
         for result in results:
-            if isinstance(result, dict):
-                if "yesterday" in result and "month_avg_daily" in result:
-                    data = result
-                    break
-                if "data" in result and isinstance(result["data"], dict):
-                    inner = result["data"]
-                    if "yesterday" in inner and "month_avg_daily" in inner:
-                        data = inner
-                        break
-                # Handle compare_periods results
-                if "period_a" in result and "period_b" in result:
-                    a = result["period_a"]
-                    b = result["period_b"]
-                    diff = result.get("differences", {})
-                    card = {
-                        "title": "Podsumowanie sprzedaży",
-                        "metrics": [
-                            {"label": "Okres A (zamówienia)", "value": f"{a['stats']['orders']}"},
-                            {"label": "Okres A (przychód)", "value": f"{a['stats']['revenue']:,.0f} PLN"},
-                            {"label": "Okres B (zamówienia)", "value": f"{b['stats']['orders']}"},
-                            {"label": "Okres B (przychód)", "value": f"{b['stats']['revenue']:,.0f} PLN"},
-                            {"label": "Różnica przychodu", "value": f"{diff.get('revenue_pct', 0):+.0f}%"},
-                        ],
-                    }
-                    break
+            if isinstance(result, str):
+                try:
+                    result = json.loads(result)
+                except Exception:
+                    continue
+            if not isinstance(result, dict):
+                continue
 
-        if data:
-            y = data["yesterday"]
-            avg = data["month_avg_daily"]
-            diff = data["diff"]
-            card = {
-                "title": "Podsumowanie sprzedaży",
-                "metrics": [
-                    {"label": "Wczoraj (zamówienia)", "value": f"{y['orders']}"},
-                    {"label": "Wczoraj (przychód)", "value": f"{y['revenue_pln']:,.0f} PLN"},
-                    {"label": "Średnia dzienna (miesiąc)", "value": f"{avg['revenue_pln']:,.0f} PLN"},
-                    {"label": "Różnica przychodu", "value": f"{diff['revenue_pct']:+.0f}%"},
-                    {"label": "Różnica zamówień", "value": f"{diff['orders_pct']:+.0f}%"},
-                ],
-            }
+            if "total_orders" in result:
+                card = _card_from_sales_summary(result)
+                break
+
+            if "period_a" in result and "period_b" in result:
+                card = _card_from_compare_periods(result)
+                break
 
     return {**state, "visual_card": card}
 
@@ -382,7 +451,7 @@ graph = build_orchestrator()
 
 
 # ---------------------------------------------------------------------------
-# Public entry point
+# Public entry points
 # ---------------------------------------------------------------------------
 
 async def run_orchestrator(user_text: str) -> dict[str, Any]:
