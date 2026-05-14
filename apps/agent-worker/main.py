@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from agent import llm
 from agent import mcp_client
-from agent.orchestrator import run_orchestrator
+from agent.orchestrator import run_pipeline
 
 CSV_PATH = Path(__file__).resolve().parents[2] / "data" / "mock" / "sales_data.csv"
 
@@ -154,7 +154,7 @@ async def voice_ws(websocket: WebSocket):
             if msg.get("type") != "utterance":
                 continue
 
-            result = await run_orchestrator(msg["text"])
+            result = await run_pipeline(msg["text"])
             await websocket.send_json({
                 "type": "response",
                 "text": result["text"],

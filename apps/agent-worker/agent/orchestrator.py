@@ -104,8 +104,8 @@ async def understand(state: GraphState) -> GraphState:
     raw = await llm.chat(user_prompt, system_prompt=system_prompt)
 
     if raw is None:
-        # LLM unavailable – fall back to empty intent so downstream can handle gracefully
-        return {**state, "current_intent": "unknown", "tool_calls": []}
+        # LLM unavailable – fall back to keyword-based intent routing
+        return _fallback_understand(user_msg, state)
 
     cleaned = _strip_code_fences(raw)
     parsed: dict[str, Any] | None = None
@@ -136,6 +136,48 @@ async def understand(state: GraphState) -> GraphState:
     }
 
 
+def _fallback_understand(user_msg: str, state: GraphState) -> GraphState:
+    """Keyword-based intent routing when LLM is unavailable."""
+    text = user_msg.lower()
+    sales_keywords = {"sprzedaż", "zamówienia", "przychód", "revenue", "orders", "miesiąc", "wczoraj", "porównaj", "analiza", "podsumowanie", "ile", "zarobili", "obrót"}
+    research_keywords = {"konkurencja", "rynek", "news", "nowe", "co nowego", "e-commerce", "trendy", "internet", "wyszukaj", "znajdź"}
+
+    if any(k in text for k in sales_keywords):
+        # Determine date range from message (default: yesterday vs month)
+        from datetime import date, timedelta
+        yesterday = date.today() - timedelta(days=1)
+        month_start = yesterday.replace(day=1)
+        return {
+            **state,
+            "current_intent": "sales",
+            "tool_calls": [
+                {"name": "compare_periods", "args": {
+                    "period_a_start": str(month_start),
+                    "period_a_end": str(yesterday),
+                    "period_b_start": str(month_start),
+                    "period_b_end": str(yesterday),
+                }}
+            ],
+            "response_text": "",
+        }
+
+    if any(k in text for k in research_keywords):
+        return {
+            **state,
+            "current_intent": "research",
+            "tool_calls": [{"name": "web_search", "args": {"query": user_msg}}],
+            "response_text": "",
+        }
+
+    # Default: direct response with a polite fallback
+    return {
+        **state,
+        "current_intent": "direct",
+        "tool_calls": [],
+        "response_text": "Niestety nie mam teraz połączenia z modelem językowym, więc nie mogę dokładnie przeanalizować Twojego pytania. Spróbuj zapytać o sprzedaż lub konkurencję.",
+    }
+
+
 def route(state: GraphState) -> str:
     """Conditional edge from understand -> tool_calling | responding."""
     if state.get("tool_calls"):
@@ -153,7 +195,12 @@ async def call_tools(state: GraphState) -> GraphState:
             continue
         try:
             result = await mcp_client.call_tool(name, args)
-            results.append(result)
+            # Try to parse JSON string into dict for downstream consumption
+            try:
+                parsed = json.loads(result)
+                results.append(parsed)
+            except Exception:
+                results.append(result)
         except Exception as exc:
             results.append({"error": str(exc), "tool": name})
     return {**state, "tool_results": results}
@@ -192,8 +239,60 @@ async def generate_response(state: GraphState) -> GraphState:
 
     prompt = "\n\n".join(parts)
     llm_text = await llm.chat(prompt, system_prompt=system_prompt)
-    final_text = llm_text if llm_text else draft or "Przepraszam, nie mogę teraz odpowiedzieć."
+    if llm_text:
+        final_text = llm_text
+    elif tool_results:
+        final_text = _format_tool_results(intent, tool_results)
+    else:
+        final_text = draft or "Przepraszam, nie mogę teraz odpowiedzieć."
     return {**state, "response_text": final_text}
+
+
+def _format_tool_results(intent: str, tool_results: list[Any]) -> str:
+    """Generate natural Polish text from tool results when LLM is unavailable."""
+    for result in tool_results:
+        if isinstance(result, dict) and "error" in result:
+            continue
+        if isinstance(result, str):
+            try:
+                result = json.loads(result)
+            except Exception:
+                continue
+        if not isinstance(result, dict):
+            continue
+
+        # Sales / compare_periods
+        if "period_a" in result and "period_b" in result:
+            a = result["period_a"]["stats"]
+            b = result["period_b"]["stats"]
+            diff = result.get("differences", {})
+            rev_pct = diff.get("revenue_pct")
+            if rev_pct is not None:
+                trend = "wyżej" if rev_pct > 0 else "niżej"
+                return (
+                    f"W okresie {result['period_a']['start']} do {result['period_a']['end']} "
+                    f"mieliśmy {a['orders']} zamówień na kwotę {a['revenue']:,.0f} zł. "
+                    f"To o {abs(rev_pct):.0f} procent {trend} niż w porównywanym okresie."
+                )
+            return f"Porównanie okresów: {a['orders']} zamówień vs {b['orders']} zamówień."
+
+        # Sales summary
+        if "total_orders" in result:
+            return (
+                f"W tym okresie zrealizowaliśmy {result['total_orders']} zamówień "
+                f"na kwotę {result['total_revenue']:,.0f} zł. "
+                f"Top produkt: {list(result.get('top_products_by_revenue', {}).keys())[0] if result.get('top_products_by_revenue') else 'brak danych'}."
+            )
+
+        # Web search
+        if "results" in result:
+            items = result["results"][:2]
+            snippets = [f"{r.get('title', '')}: {r.get('snippet', r.get('url', ''))}" for r in items]
+            return "Oto co znalazłem: " + "; ".join(snippets)
+
+    return "Mam dane, ale nie mogę ich teraz sformatować."
+
+
 
 
 def build_card(state: GraphState) -> GraphState:
@@ -216,6 +315,22 @@ def build_card(state: GraphState) -> GraphState:
                     if "yesterday" in inner and "month_avg_daily" in inner:
                         data = inner
                         break
+                # Handle compare_periods results
+                if "period_a" in result and "period_b" in result:
+                    a = result["period_a"]
+                    b = result["period_b"]
+                    diff = result.get("differences", {})
+                    card = {
+                        "title": "Podsumowanie sprzedaży",
+                        "metrics": [
+                            {"label": "Okres A (zamówienia)", "value": f"{a['stats']['orders']}"},
+                            {"label": "Okres A (przychód)", "value": f"{a['stats']['revenue']:,.0f} PLN"},
+                            {"label": "Okres B (zamówienia)", "value": f"{b['stats']['orders']}"},
+                            {"label": "Okres B (przychód)", "value": f"{b['stats']['revenue']:,.0f} PLN"},
+                            {"label": "Różnica przychodu", "value": f"{diff.get('revenue_pct', 0):+.0f}%"},
+                        ],
+                    }
+                    break
 
         if data:
             y = data["yesterday"]
@@ -290,4 +405,29 @@ async def run_orchestrator(user_text: str) -> dict[str, Any]:
         "text": result.get("response_text", ""),
         "card": result.get("visual_card"),
         "intent": result.get("current_intent", ""),
+    }
+
+
+async def run_pipeline(user_text: str) -> dict[str, Any]:
+    """Sequential pipeline fallback when LangGraph misbehaves with async nodes."""
+    state: GraphState = {
+        "messages": [{"role": "user", "content": user_text}],
+        "current_intent": "",
+        "tool_calls": [],
+        "tool_results": [],
+        "response_text": "",
+        "visual_card": None,
+        "memory_context": "",
+    }
+    state = load_memory(state)
+    state = await understand(state)
+    next_node = route(state)
+    if next_node == "tool_calling":
+        state = await call_tools(state)
+    state = await generate_response(state)
+    state = build_card(state)
+    return {
+        "text": state.get("response_text", ""),
+        "card": state.get("visual_card"),
+        "intent": state.get("current_intent", ""),
     }
