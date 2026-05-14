@@ -20,12 +20,14 @@ logger = logging.getLogger(__name__)
 # Server configuration
 # ---------------------------------------------------------------------------
 
+_VENV_PYTHON = str(Path("/home/szymon/volle/apps/agent-worker/.venv/bin/python"))
+
 DEFAULT_SERVERS: dict[str, list[str]] = {
-    "business-data": ["python", str(Path("/home/szymon/volle/mcp-servers/mcp-business-data/main.py"))],
-    "shopify": ["python", str(Path("/home/szymon/volle/mcp-servers/mcp-shopify/main.py"))],
-    "web-research": ["python", str(Path("/home/szymon/volle/mcp-servers/mcp-web-research/main.py"))],
-    "calendar-tasks": ["python", str(Path("/home/szymon/volle/mcp-servers/mcp-calendar-tasks/main.py"))],
-    "email-drafts": ["python", str(Path("/home/szymon/volle/mcp-servers/mcp-email-drafts/main.py"))],
+    "business-data": [_VENV_PYTHON, str(Path("/home/szymon/volle/mcp-servers/mcp-business-data/main.py"))],
+    "shopify": [_VENV_PYTHON, str(Path("/home/szymon/volle/mcp-servers/mcp-shopify/main.py"))],
+    "web-research": [_VENV_PYTHON, str(Path("/home/szymon/volle/mcp-servers/mcp-web-research/main.py"))],
+    "calendar-tasks": [_VENV_PYTHON, str(Path("/home/szymon/volle/mcp-servers/mcp-calendar-tasks/main.py"))],
+    "email-drafts": [_VENV_PYTHON, str(Path("/home/szymon/volle/mcp-servers/mcp-email-drafts/main.py"))],
 }
 
 # ---------------------------------------------------------------------------
