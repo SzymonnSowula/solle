@@ -63,6 +63,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
+        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![open_folder, open_app, clipboard_write, clipboard_read])
         .setup(|app| {
             // --------------------------------------------------
@@ -129,6 +130,19 @@ pub fn run() {
             // Hide window on startup (tray only)
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.hide();
+            }
+
+            // Close-to-tray: prevent actual exit when user clicks X
+            let app_handle = app.handle().clone();
+            if let Some(w) = app.get_webview_window("main") {
+                w.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        api.prevent_close();
+                        if let Some(win) = app_handle.get_webview_window("main") {
+                            let _ = win.hide();
+                        }
+                    }
+                });
             }
 
             Ok(())

@@ -3,13 +3,50 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 
 from fastapi import APIRouter
 
 from db import UserRepo, SettingsRepo, IntegrationRepo
+from agent import llm
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
+
+
+@router.get("/llm/provider")
+async def get_llm_provider() -> dict[str, Any]:
+    """Return current LLM provider config."""
+    return {
+        "provider": llm._PROVIDER,
+        "openai_model": llm._OPENAI_MODEL,
+        "local_model": llm._LOCAL_MODEL,
+        "local_url": llm._LOCAL_BASE,
+    }
+
+
+@router.post("/llm/provider")
+async def set_llm_provider(body: dict[str, Any]) -> dict[str, Any]:
+    """Switch LLM provider at runtime. Persists in settings DB."""
+    user = await UserRepo().get_or_create()
+    provider = body.get("provider", "openai")
+    # Update in-memory module var (not thread-perfect but sufficient for single-worker dev)
+    llm._PROVIDER = provider.lower().strip()
+    if "local_model" in body:
+        llm._LOCAL_MODEL = body["local_model"]
+    if "local_url" in body:
+        llm._LOCAL_BASE = body["local_url"]
+    # Persist
+    await SettingsRepo().set(user["id"], "llm_provider", llm._PROVIDER)
+    await SettingsRepo().set(user["id"], "local_llm_model", llm._LOCAL_MODEL)
+    await SettingsRepo().set(user["id"], "local_llm_url", llm._LOCAL_BASE)
+    return {"provider": llm._PROVIDER}
+
+
+@router.get("/llm/local-status")
+async def get_local_llm_status() -> dict[str, Any]:
+    """Probe local LLM server."""
+    return await llm.local_llm_status()
 
 
 @router.get("/profile")

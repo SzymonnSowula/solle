@@ -131,3 +131,25 @@ export async function undoAction(actionId: number) {
   if (!r.ok) throw new Error("Undo failed");
   return r.json();
 }
+
+export async function getLlmProvider() {
+  const r = await fetch(`${API_BASE}/api/settings/llm/provider`);
+  if (!r.ok) throw new Error("Failed to get LLM provider");
+  return r.json();
+}
+
+export async function setLlmProvider(body: Record<string, any>) {
+  const r = await fetch(`${API_BASE}/api/settings/llm/provider`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error("Failed to set LLM provider");
+  return r.json();
+}
+
+export async function getLocalLlmStatus() {
+  const r = await fetch(`${API_BASE}/api/settings/llm/local-status`);
+  if (!r.ok) throw new Error("Failed to get local LLM status");
+  return r.json();
+}

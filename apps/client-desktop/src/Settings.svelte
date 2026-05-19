@@ -6,6 +6,9 @@
     getKv,
     setKv,
     testSmtp,
+    getLlmProvider,
+    setLlmProvider,
+    getLocalLlmStatus,
   } from './lib/api';
 
   let profile: any = {};
@@ -15,6 +18,13 @@
   let loading = false;
   let saved = false;
   let smtpTestMsg = '';
+
+  // Local LLM state
+  let llmProvider = 'openai';
+  let localModel = 'llama3';
+  let localUrl = 'http://localhost:11434/v1';
+  let localStatus: any = null;
+  let checkingLocal = false;
 
   onMount(async () => {
     try {
@@ -27,8 +37,24 @@
       if (s && typeof s === 'object') {
         smtp = { ...smtp, ...s };
       }
+      const lp = await getLlmProvider();
+      llmProvider = lp.provider || 'openai';
+      localModel = lp.local_model || 'llama3';
+      localUrl = lp.local_url || 'http://localhost:11434/v1';
+      checkLocalStatus();
     } catch {}
   });
+
+  async function checkLocalStatus() {
+    checkingLocal = true;
+    try {
+      localStatus = await getLocalLlmStatus();
+    } catch (e) {
+      localStatus = { available: false };
+    } finally {
+      checkingLocal = false;
+    }
+  }
 
   async function save() {
     loading = true;
@@ -40,6 +66,7 @@
       await setKv('tasks', tasks.split(',').map((s: string) => s.trim()).filter(Boolean));
       await setKv('important_folders', importantFolders.split(',').map((s: string) => s.trim()).filter(Boolean));
       await setKv('smtp_config', smtp);
+      await setLlmProvider({ provider: llmProvider, local_model: localModel, local_url: localUrl });
       saved = true;
       setTimeout(() => saved = false, 2000);
     } finally {
@@ -88,6 +115,30 @@
     Test połączenia
   </button>
   {#if smtpTestMsg}<div class="test-msg">{smtpTestMsg}</div>{/if}
+
+  <h3>LLM / Model AI</h3>
+  <label class="toggle-label">
+    <input type="checkbox" checked={llmProvider === 'local'} on:change={(e) => { llmProvider = (e.target as HTMLInputElement).checked ? 'local' : 'openai'; }} />
+    Użyj lokalnego LLM (Ollama/lm-studio)
+  </label>
+  {#if llmProvider === 'local'}
+    <label>URL serwera lokalnego</label>
+    <input bind:value={localUrl} placeholder="http://localhost:11434/v1" />
+    <label>Model</label>
+    <input bind:value={localModel} placeholder="llama3" />
+    <button class="btn-small" on:click={checkLocalStatus} disabled={checkingLocal}>
+      {checkingLocal ? 'Sprawdzam...' : 'Sprawdź dostępność'}
+    </button>
+    {#if localStatus}
+      <div class="test-msg">
+        {#if localStatus.available}
+          Dostępny — {localStatus.models?.length || 0} modeli
+        {:else}
+          Brak połączenia — {localStatus.error || 'nie odpowiada'}
+        {/if}
+      </div>
+    {/if}
+  {/if}
 
   {#if saved}<div class="saved">Zapisano!</div>{/if}
   <button class="btn-primary" on:click={save} disabled={loading}>
