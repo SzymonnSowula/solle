@@ -10,7 +10,7 @@ from agent import mcp_client
 from agent.orchestrator import run_pipeline, handle_confirmation
 from db import init_pool, close_pool, run_migrations
 from db.repository import UserRepo, SettingsRepo
-from api import onboarding, settings, voice, actions, voice_stream, notifications, meeting
+from api import onboarding, settings, voice, actions, voice_stream, notifications, meeting, elevenlabs
 from tasks.auto_fetch import start_scheduler, stop_scheduler
 
 
@@ -63,6 +63,7 @@ app.include_router(actions.router)
 app.include_router(voice_stream.router)
 app.include_router(notifications.router)
 app.include_router(meeting.router)
+app.include_router(elevenlabs.router)
 
 
 # ------------------------------------------------------------------

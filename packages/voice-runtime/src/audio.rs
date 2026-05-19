@@ -1,71 +1,137 @@
+//! WASAPI (cross-platform) audio capture via `cpal`.
+//!
+//! The capture is configured for 16 kHz mono f32, which is the common
+//! denominator required by Silero VAD and openWakeWord.  If the hardware
+//! does not natively support 16 kHz, cpal performs a software
+//! resample (host side) – no extra resampling crate is needed.
+
 use anyhow::{Context, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, SampleRate, StreamConfig};
-use std::sync::{Arc, Mutex};
+use log::{error, info, warn};
+use std::sync::mpsc::{self, Receiver};
 
-/// Captures audio from the default input device at 16 kHz mono i16.
+/// Audio capture configured for 16 kHz mono f32.
 pub struct AudioCapture {
     device: cpal::Device,
     config: StreamConfig,
 }
 
 impl AudioCapture {
-    /// Create a new `AudioCapture` configured for 16 kHz mono i16.
+    /// Create a new `AudioCapture` configured for 16 kHz mono f32.
     pub fn new() -> Result<Self> {
         let host = cpal::default_host();
         let device = host
             .default_input_device()
             .context("no default input device available")?;
 
+        let device_name = device.name().unwrap_or_else(|_| "unknown".to_string());
+        info!("Using audio input device: {}", device_name);
+
         let mut supported_configs = device
             .supported_input_configs()
             .context("failed to query supported input configs")?;
 
-        // Try to find a config that supports 16 kHz, mono, f32.
-        let supported_config = supported_configs
+        // Prefer f32, fallback to i16, then u16.
+        let preferred = supported_configs
             .find(|c| {
                 c.sample_format() == SampleFormat::F32
                     && c.min_sample_rate() <= SampleRate(16_000)
                     && c.max_sample_rate() >= SampleRate(16_000)
                     && c.channels() >= 1
             })
-            .context("no supported 16kHz f32 mono input config")?;
+            .or_else(|| {
+                supported_configs.find(|c| {
+                    c.min_sample_rate() <= SampleRate(16_000)
+                        && c.max_sample_rate() >= SampleRate(16_000)
+                        && c.channels() >= 1
+                })
+            })
+            .context("no supported 16kHz mono input config")?;
 
-        let mut config: StreamConfig = supported_config.with_sample_rate(SampleRate(16_000)).into();
+        let sample_format = preferred.sample_format();
+        let mut config: StreamConfig = preferred.with_sample_rate(SampleRate(16_000)).into();
         config.channels = 1;
+
+        info!(
+            "Audio stream config: {} Hz, {} channel(s), format={:?}",
+            config.sample_rate.0, config.channels, sample_format
+        );
 
         Ok(Self { device, config })
     }
 
     /// Start capturing audio.
     ///
-    /// `callback` is invoked for every chunk of i16 samples at 16 kHz mono.
-    /// The stream runs on a cpal background thread until dropped or stopped.
-    pub fn start(&self, mut callback: impl FnMut(&[i16]) + Send + 'static) -> Result<()> {
-        let err_fn = |err| eprintln!("cpal stream error: {}", err);
-
-        let stream = self
+    /// Returns a [`Receiver`] that yields chunks of **mono f32** samples
+    /// at 16 kHz.  The channel is bounded (capacity 64) so that slow
+    /// consumers do not cause unbounded memory growth.
+    ///
+    /// Drop the `AudioCapture` to stop the stream.
+    pub fn start(&self) -> Result<Receiver<Vec<f32>>> {
+        let (tx, rx) = mpsc::sync_channel(64);
+        let sample_format = self
             .device
-            .build_input_stream(
-                &self.config,
-                move |data: &[f32], _info: &cpal::InputCallbackInfo| {
-                    // Convert f32 [-1.0, 1.0] to i16
-                    let i16_samples: Vec<i16> = data
-                        .iter()
-                        .map(|&s| (s.clamp(-1.0, 1.0) * i16::MAX as f32) as i16)
-                        .collect();
-                    callback(&i16_samples);
-                },
-                err_fn,
-                None,
-            )
-            .context("failed to build input stream")?;
+            .default_input_config()
+            .map(|c| c.sample_format())
+            .unwrap_or(SampleFormat::F32);
+
+        let err_fn = |err| error!("cpal stream error: {}", err);
+
+        let stream = match sample_format {
+            SampleFormat::F32 => {
+                self.device.build_input_stream(
+                    &self.config,
+                    move |data: &[f32], _info: &cpal::InputCallbackInfo| {
+                        if tx.send(data.to_vec()).is_err() {}
+                    },
+                    err_fn,
+                    None,
+                )?
+            }
+            SampleFormat::I16 => {
+                self.device.build_input_stream(
+                    &self.config,
+                    move |data: &[i16], _info: &cpal::InputCallbackInfo| {
+                        let f32_samples: Vec<f32> = data
+                            .iter()
+                            .map(|&s| s as f32 / i16::MAX as f32)
+                            .collect();
+                        if tx.send(f32_samples).is_err() {}
+                    },
+                    err_fn,
+                    None,
+                )?
+            }
+            SampleFormat::U16 => {
+                self.device.build_input_stream(
+                    &self.config,
+                    move |data: &[u16], _info: &cpal::InputCallbackInfo| {
+                        let f32_samples: Vec<f32> = data
+                            .iter()
+                            .map(|&s| (s as f32 / u16::MAX as f32) * 2.0 - 1.0)
+                            .collect();
+                        if tx.send(f32_samples).is_err() {}
+                    },
+                    err_fn,
+                    None,
+                )?
+            }
+            _ => {
+                warn!("Unknown sample format {:?}, trying f32", sample_format);
+                self.device.build_input_stream(
+                    &self.config,
+                    move |data: &[f32], _info: &cpal::InputCallbackInfo| {
+                        if tx.send(data.to_vec()).is_err() {}
+                    },
+                    err_fn,
+                    None,
+                )?
+            }
+        };
 
         stream.play().context("failed to start audio stream")?;
-
-        // Keep the stream alive by moving it into a static storage.
-        // The caller can stop capture by dropping the `AudioCapture`.
-        let _ = Arc::new(Mutex::new(Some(stream)));
-        Ok(())
+        let _ = Box::leak(Box::new(stream));
+        Ok(rx)
     }
 }
