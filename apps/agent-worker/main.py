@@ -7,17 +7,26 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from agent import llm
 from agent import mcp_client
-from agent.orchestrator import run_pipeline
+from agent.orchestrator import run_pipeline, handle_confirmation
+from db import init_pool, close_pool, run_migrations
+from api import onboarding, settings, voice, actions, voice_stream, notifications, meeting
+from tasks.auto_fetch import start_scheduler, stop_scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Volle Agent Worker starting...")
     print(f"LLM ready: {'YES' if llm.API_KEY else 'NO (mock fallback)'}")
+    await init_pool()
+    await run_migrations()
+    print("DB ready")
     await mcp_client.registry.start_all()
     print(f"MCP servers: {len(mcp_client.registry.list_tools())} tools available")
+    start_scheduler()
     yield
+    stop_scheduler()
     await mcp_client.registry.stop_all()
+    await close_pool()
     print("Volle Agent Worker shutting down...")
 
 
@@ -31,6 +40,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(onboarding.router)
+app.include_router(settings.router)
+app.include_router(voice.router)
+app.include_router(actions.router)
+app.include_router(voice_stream.router)
+app.include_router(notifications.router)
+app.include_router(meeting.router)
+
 
 # ------------------------------------------------------------------
 # WebSocket voice endpoint
@@ -43,14 +60,31 @@ async def voice_ws(websocket: WebSocket):
     try:
         while True:
             msg = await websocket.receive_json()
+            if msg.get("type") == "confirm":
+                session_id = msg.get("session_id")
+                tool = msg.get("tool")
+                args = msg.get("args", {})
+                result = await handle_confirmation(session_id, tool, args)
+                await websocket.send_json({
+                    "type": "response",
+                    "text": result["text"],
+                    "visual_card": result["card"],
+                    "session_id": result["session_id"],
+                })
+                continue
+
             if msg.get("type") != "utterance":
                 continue
 
-            result = await run_pipeline(msg["text"])
+            session_id = msg.get("session_id")
+            result = await run_pipeline(msg["text"], session_id=session_id)
             await websocket.send_json({
                 "type": "response",
                 "text": result["text"],
                 "visual_card": result["card"],
+                "session_id": result["session_id"],
+                "needs_confirmation": result.get("needs_confirmation", False),
+                "pending_action": result.get("pending_action"),
             })
     except Exception as exc:
         print(f"WS error: {exc}")

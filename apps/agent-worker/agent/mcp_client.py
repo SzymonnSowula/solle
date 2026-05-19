@@ -29,6 +29,9 @@ DEFAULT_SERVERS: dict[str, list[str]] = {
     "web-research": [_VENV_PYTHON, str(Path("/home/szymon/volle/mcp-servers/mcp-web-research/main.py"))],
     "calendar-tasks": [_VENV_PYTHON, str(Path("/home/szymon/volle/mcp-servers/mcp-calendar-tasks/main.py"))],
     "email-drafts": [_VENV_PYTHON, str(Path("/home/szymon/volle/mcp-servers/mcp-email-drafts/main.py"))],
+    "desktop-automation": [_VENV_PYTHON, str(Path("/home/szymon/volle/mcp-servers/mcp-desktop-automation/main.py"))],
+    "file-system": [_VENV_PYTHON, str(Path("/home/szymon/volle/mcp-servers/mcp-file-system/main.py"))],
+    "obsidian-memory": [_VENV_PYTHON, str(Path("/home/szymon/volle/mcp-servers/mcp-obsidian-memory/main.py"))],
 }
 
 # ---------------------------------------------------------------------------
@@ -42,15 +45,35 @@ SAFETY_TIERS: dict[str, str] = {
     "get_sales_summary": "green",
     "compare_periods": "green",
     "get_inventory_status": "green",
+    "take_screenshot": "green",
+    "clipboard_read": "green",
+    "list_directory": "green",
+    "get_file_info": "green",
+    "list_notes": "green",
+    "read_note": "green",
+    "search_notes": "green",
     # Yellow – mutating but reversible
     "create_event": "yellow",
     "create_task": "yellow",
     "draft_email": "yellow",
     "list_drafts": "yellow",
     "list_events": "yellow",
+    "type_text": "yellow",
+    "clipboard_write": "yellow",
+    "clipboard_action": "yellow",
+    "open_application": "yellow",
+    "open_app": "yellow",
+    "open_folder": "yellow",
+    "organize_desktop": "yellow",
+    "desktop_organize": "yellow",
+    "move_files": "yellow",
+    "sort_files_by_date": "yellow",
+    "send_email": "yellow",
+    "write_note": "yellow",
     # Orange – financial / business-critical
     "get_orders": "orange",
     "get_products": "orange",
+    "delete_note": "orange",
 }
 
 

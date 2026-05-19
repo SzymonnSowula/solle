@@ -1,10 +1,69 @@
 use tauri::Manager;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
+#[tauri::command]
+fn open_folder(path: String) -> Result<(), String> {
+    let status = if cfg!(target_os = "windows") {
+        std::process::Command::new("cmd")
+            .args(["/c", "start", "", &path])
+            .status()
+    } else if cfg!(target_os = "macos") {
+        std::process::Command::new("open")
+            .arg(&path)
+            .status()
+    } else {
+        std::process::Command::new("xdg-open")
+            .arg(&path)
+            .status()
+    };
+    match status {
+        Ok(s) if s.success() => Ok(()),
+        Ok(s) => Err(format!("Exit code: {}", s)),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+fn open_app(name: String) -> Result<(), String> {
+    let status = if cfg!(target_os = "windows") {
+        std::process::Command::new("cmd")
+            .args(["/c", "start", "", &name])
+            .status()
+    } else if cfg!(target_os = "macos") {
+        std::process::Command::new("open")
+            .args(["-a", &name])
+            .status()
+    } else {
+        std::process::Command::new(&name)
+            .status()
+    };
+    match status {
+        Ok(s) if s.success() => Ok(()),
+        Ok(s) => Err(format!("Exit code: {}", s)),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+fn clipboard_write(text: String) -> Result<(), String> {
+    use arboard::Clipboard;
+    let mut clip = Clipboard::new().map_err(|e| e.to_string())?;
+    clip.set_text(text).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn clipboard_read() -> Result<String, String> {
+    use arboard::Clipboard;
+    let mut clip = Clipboard::new().map_err(|e| e.to_string())?;
+    clip.get_text().map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
+        .invoke_handler(tauri::generate_handler![open_folder, open_app, clipboard_write, clipboard_read])
         .setup(|app| {
             // --------------------------------------------------
             // System tray menu

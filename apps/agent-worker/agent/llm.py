@@ -59,3 +59,48 @@ async def chat(user_message: str, system_prompt: str | None = None) -> str | Non
             # Log but do not crash – caller will fall back to mock
             print(f"[LLM] Error: {exc}")
             return None
+
+
+async def chat_vision(base64_image: str, user_message: str, system_prompt: str | None = None) -> str | None:
+    """Send a vision chat completion request with a base64-encoded PNG image."""
+    if not API_KEY:
+        return None
+
+    sys_msg = system_prompt or BUSINESS_SYSTEM_PROMPT
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            payload = {
+                "model": MODEL,
+                "messages": [
+                    {"role": "system", "content": sys_msg},
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": user_message},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/png;base64,{base64_image}"
+                                },
+                            },
+                        ],
+                    },
+                ],
+                "temperature": 0.35,
+                "max_tokens": 600,
+            }
+            r = await client.post(
+                f"{BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+            r.raise_for_status()
+            data = r.json()
+            return data["choices"][0]["message"]["content"]
+        except Exception as exc:
+            print(f"[LLM Vision] Error: {exc}")
+            return None

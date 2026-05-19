@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "volle-desktop",
+  "productName": "Volle",
   "version": "0.1.0",
   "identifier": "com.volle.app",
   "build": {
@@ -31,7 +31,13 @@
     }
   },
   "bundle": {
-    "active": false,
-    "targets": "all"
+    "active": true,
+    "targets": ["msi", "nsis"],
+    "publisher": "Volle AI",
+    "copyright": "Copyright (c) 2026 Volle AI",
+    "category": "DeveloperTool",
+    "icon": [
+      "icons/icon.png"
+    ]
   }
 }
