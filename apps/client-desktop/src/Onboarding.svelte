@@ -182,7 +182,7 @@
   {/if}
 </div>
 
-<script context="module">
+<script context="module" lang="ts">
   function fade(node: HTMLElement, { duration = 250 }) {
     return { duration, css: (t: number) => `opacity: ${t}; transform: translateY(${(1-t)*10}px);` };
   }

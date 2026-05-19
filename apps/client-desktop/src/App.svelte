@@ -417,7 +417,7 @@
 
 <ConfirmDialog message={confirmMsg} onConfirm={confirmAction} onCancel={cancelAction} />
 
-<script context="module">
+<script context="module" lang="ts">
   function fade(node: HTMLElement, { duration = 200 }) {
     return { duration, css: (t: number) => `opacity: ${t}; transform: translateY(${(1-t)*4}px);` };
   }

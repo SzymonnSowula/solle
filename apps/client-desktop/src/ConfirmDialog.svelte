@@ -22,7 +22,7 @@
   </div>
 {/if}
 
-<script context="module">
+<script context="module" lang="ts">
   function fade(node: HTMLElement, { duration = 220 }) {
     return {
       duration,
