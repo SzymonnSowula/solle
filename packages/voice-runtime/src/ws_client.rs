@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use tokio::net::TcpStream;
 use tokio_tungstenite::{
     connect_async,
-    tungstenite::protocol::{CloseFrame, Message},
+    tungstenite::protocol::Message,
     MaybeTlsStream, WebSocketStream,
 };
 

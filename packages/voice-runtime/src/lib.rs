@@ -5,13 +5,14 @@ pub mod wake_word;
 pub mod ws_client;
 
 pub use audio::AudioCapture;
-pub use vad::SileroVad;
-pub use wake_word::WakeWordDetector;
+pub use encoder::{OpusConfig, OpusEncoder};
+pub use vad::{SileroVad, VadConfig, VAD_CHUNK_SAMPLES};
+pub use wake_word::{WakeWordConfig, WakeWordDetector, WAKE_WORD_WINDOW_SAMPLES};
 pub use ws_client::VoiceWsClient;
 
 use anyhow::Result;
-use crossbeam_channel::{bounded, Receiver, Sender};
-use log::{error, info, warn};
+use log::{info, warn};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -53,7 +54,6 @@ impl Default for VoicePipelineConfig {
 /// The main voice pipeline.
 pub struct VoicePipeline {
     config: VoicePipelineConfig,
-    state: PipelineState,
     /// Set to true to gracefully shut down.
     shutdown: Arc<AtomicBool>,
 }
@@ -62,7 +62,6 @@ impl VoicePipeline {
     pub fn new(config: VoicePipelineConfig) -> Result<Self> {
         Ok(Self {
             config,
-            state: PipelineState::Idle,
             shutdown: Arc::new(AtomicBool::new(false)),
         })
     }
@@ -73,16 +72,22 @@ impl VoicePipeline {
 
     /// Run the pipeline in a blocking manner.
     pub fn run_blocking(&mut self) -> Result<()> {
-        let (audio_tx, audio_rx): (Sender<Vec<f32>>, Receiver<Vec<f32>>) = bounded(256);
-
         let capture = AudioCapture::new()?;
-        let _capture_rx = capture.start()?;
+        let rx = capture.start()?;
 
         info!("Voice pipeline started. Say \"Hej Volle\" to trigger.");
 
-        let mut vad = SileroVad::new(&self.config.vad_model_path, self.config.sample_rate)?;
-        let mut wake =
-            WakeWordDetector::with_model_path(&self.config.wake_word_model_path)?;
+        let mut vad = SileroVad::new(VadConfig {
+            model_path: PathBuf::from(&self.config.vad_model_path),
+            sample_rate: self.config.sample_rate,
+            ..VadConfig::default()
+        })?;
+
+        let mut wake = WakeWordDetector::new(WakeWordConfig {
+            model_path: PathBuf::from(&self.config.wake_word_model_path),
+            sample_rate: self.config.sample_rate,
+            ..WakeWordConfig::default()
+        })?;
 
         let mut state = PipelineState::Idle;
         let mut silence_start: Option<Instant> = None;
@@ -93,9 +98,11 @@ impl VoicePipeline {
             .build()?;
 
         let mut chunk_buf: Vec<f32> = Vec::with_capacity(512);
+        let mut wake_buffer: Vec<f32> = Vec::with_capacity(WAKE_WORD_WINDOW_SAMPLES);
+        let mut stream_buffer: Vec<f32> = Vec::new();
 
         while !self.shutdown.load(Ordering::Relaxed) {
-            let samples = match audio_rx.recv_timeout(Duration::from_millis(100)) {
+            let samples = match rx.recv_timeout(Duration::from_millis(100)) {
                 Ok(s) => s,
                 Err(_) => continue,
             };
@@ -107,55 +114,85 @@ impl VoicePipeline {
 
                 match state {
                     PipelineState::Idle => {
-                        if wake.process(&frame) {
-                            info!("Wake word triggered! Switching to Streaming.");
-                            state = PipelineState::Streaming;
-                            silence_start = None;
-                            vad.reset();
+                        wake_buffer.extend_from_slice(&frame);
 
-                            let url = self.config.backend_ws_url.clone();
-                            ws_client = rt.block_on(async {
-                                match VoiceWsClient::connect(&url).await {
-                                    Ok(c) => Some(c),
-                                    Err(e) => {
-                                        warn!("WS connect failed: {}", e);
-                                        None
+                        while wake_buffer.len() >= WAKE_WORD_WINDOW_SAMPLES {
+                            let window: Vec<f32> =
+                                wake_buffer.drain(..WAKE_WORD_WINDOW_SAMPLES).collect();
+
+                            if wake.process(&window) {
+                                info!("Wake word triggered! Switching to Streaming.");
+                                state = PipelineState::Streaming;
+                                silence_start = None;
+                                vad.reset();
+                                stream_buffer.clear();
+
+                                let url = self.config.backend_ws_url.clone();
+                                ws_client = rt.block_on(async {
+                                    match VoiceWsClient::connect(&url).await {
+                                        Ok(c) => Some(c),
+                                        Err(e) => {
+                                            warn!("WS connect failed: {}", e);
+                                            None
+                                        }
                                     }
-                                }
-                            });
+                                });
+                            }
+                        }
+
+                        // Keep a small overlap so we don't miss a wake word that
+                        // straddles two windows.
+                        let keep = wake_buffer.len().min(WAKE_WORD_WINDOW_SAMPLES / 2);
+                        if wake_buffer.len() > keep {
+                            wake_buffer.drain(..wake_buffer.len() - keep);
                         }
                     }
 
                     PipelineState::Streaming => {
-                        let prob = match vad.process(&frame) {
-                            Ok(p) => p,
-                            Err(e) => {
-                                warn!("VAD error: {}", e);
-                                1.0
+                        stream_buffer.extend_from_slice(&frame);
+
+                        while stream_buffer.len() >= VAD_CHUNK_SAMPLES {
+                            let vad_chunk: Vec<f32> =
+                                stream_buffer.drain(..VAD_CHUNK_SAMPLES).collect();
+
+                            let (prob, speech_ended) = match vad.process(&vad_chunk) {
+                                Ok(r) => r,
+                                Err(e) => {
+                                    warn!("VAD error: {}", e);
+                                    (1.0, false)
+                                }
+                            };
+
+                            if prob >= self.config.silence_threshold {
+                                silence_start = None;
+                            } else if silence_start.is_none() {
+                                silence_start = Some(Instant::now());
                             }
-                        };
 
-                        if prob >= self.config.silence_threshold {
-                            silence_start = None;
-                        } else if silence_start.is_none() {
-                            silence_start = Some(Instant::now());
-                        }
+                            if let Some(ref mut ws) = ws_client {
+                                let pcm_bytes: Vec<u8> =
+                                    vad_chunk.iter().flat_map(|&s| s.to_le_bytes()).collect();
+                                let sr = self.config.sample_rate as u32;
+                                let _ = rt.block_on(async {
+                                    let _ = ws
+                                        .send_audio_chunk(pcm_bytes, sr, 1, "pcm")
+                                        .await;
+                                });
+                            }
 
-                        if let Some(ref mut ws) = ws_client {
-                            let pcm_bytes: Vec<u8> =
-                                frame.iter().flat_map(|&s| s.to_le_bytes()).collect();
-                            let sr = self.config.sample_rate as u32;
-                            let _ = rt.block_on(async move {
-                                let _ = ws
-                                    .send_audio_chunk(pcm_bytes, sr, 1, "pcm")
-                                    .await;
-                            });
-                        }
-
-                        if let Some(start) = silence_start {
-                            if start.elapsed() >= self.config.silence_duration {
-                                info!("Silence detected — closing stream.");
+                            if speech_ended {
+                                info!("End of speech detected by VAD.");
                                 state = PipelineState::Closing;
+                                break;
+                            }
+
+                            // Fallback: legacy silence-duration timeout.
+                            if let Some(start) = silence_start {
+                                if start.elapsed() >= self.config.silence_duration {
+                                    info!("Silence timeout — closing stream.");
+                                    state = PipelineState::Closing;
+                                    break;
+                                }
                             }
                         }
                     }

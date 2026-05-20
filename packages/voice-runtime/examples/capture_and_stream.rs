@@ -15,8 +15,9 @@
 use anyhow::{Context, Result};
 use log::{error, info, warn};
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tokio::time::{sleep, timeout};
+use tokio::time::timeout;
 use volle_voice_runtime::{
     AudioCapture, OpusConfig, OpusEncoder, SileroVad, VadConfig, VoiceWsClient,
     WakeWordConfig, WakeWordDetector,
@@ -42,6 +43,7 @@ async fn main() -> Result<()> {
     // ------------------------------------------------------------------
     let capture = AudioCapture::new().context("audio capture initialisation failed")?;
     let rx = capture.start().context("failed to start audio capture")?;
+    let rx = Arc::new(Mutex::new(rx));
 
     let mut wake = WakeWordDetector::new(WakeWordConfig {
         model_path: models_dir.join("hej_volle.onnx"),
@@ -90,8 +92,9 @@ async fn main() -> Result<()> {
         // ----------------------------------------------------------------
         // Pull audio from cpal
         // ----------------------------------------------------------------
+        let rx = Arc::clone(&rx);
         let chunk = match timeout(Duration::from_millis(200), async {
-            tokio::task::spawn_blocking(move || rx.recv().ok())
+            tokio::task::spawn_blocking(move || rx.lock().unwrap().recv().ok())
                 .await
                 .ok()
                 .flatten()
@@ -129,7 +132,6 @@ async fn main() -> Result<()> {
                         info!("Wake word detected! Transitioning to streaming state.");
                         state = State::Streaming;
                         utterance_start = Some(Instant::now());
-                        silence_deadline = None;
                         vad.reset();
                         stream_buffer.clear();
 
@@ -170,7 +172,7 @@ async fn main() -> Result<()> {
                         .drain(..volle_voice_runtime::vad::VAD_CHUNK_SAMPLES)
                         .collect();
 
-                    let (_speech_now, speech_ended) = vad.process(&vad_chunk);
+                    let (_speech_now, speech_ended) = vad.process(&vad_chunk).unwrap_or((0.0, false));
 
                     // Encode and send regardless of VAD result while we're
                     // still inside the utterance.  The backend can do its own
