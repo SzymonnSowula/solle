@@ -11,24 +11,28 @@ pub use wake_word::{WakeWordConfig, WakeWordDetector, WAKE_WORD_WINDOW_SAMPLES};
 pub use ws_client::VoiceWsClient;
 
 use anyhow::Result;
+use crossbeam_channel::Sender;
 use log::{info, warn};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-/// Pipeline state machine.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum PipelineState {
-    /// Listening for wake word, discarding audio.
-    Idle,
-    /// Wake word detected — streaming audio to backend.
-    Streaming,
-    /// Silence detected — grace period before returning to Idle.
-    Closing,
+/// Events emitted by the voice pipeline.
+#[derive(Debug, Clone)]
+pub enum VoiceEvent {
+    /// The wake phrase was detected.
+    WakeWord,
+    /// Streaming to the backend has started.
+    SpeechStarted,
+    /// The utterance finished (silence detected).
+    SpeechEnded,
+    /// A non-fatal error occurred.
+    Error(String),
 }
 
 /// Configuration for the full voice pipeline.
+#[derive(Clone)]
 pub struct VoicePipelineConfig {
     pub vad_model_path: String,
     pub wake_word_model_path: String,
@@ -36,6 +40,8 @@ pub struct VoicePipelineConfig {
     pub silence_threshold: f32,
     pub silence_duration: Duration,
     pub sample_rate: usize,
+    /// Optional channel for pipeline events (wake word, speech end, etc.).
+    pub event_sender: Option<Sender<VoiceEvent>>,
 }
 
 impl Default for VoicePipelineConfig {
@@ -47,6 +53,7 @@ impl Default for VoicePipelineConfig {
             silence_threshold: 0.3,
             silence_duration: Duration::from_millis(1200),
             sample_rate: 16_000,
+            event_sender: None,
         }
     }
 }
@@ -70,8 +77,14 @@ impl VoicePipeline {
         self.shutdown.store(true, Ordering::Relaxed);
     }
 
+    fn emit(&self, event: VoiceEvent) {
+        if let Some(tx) = &self.config.event_sender {
+            let _ = tx.send(event);
+        }
+    }
+
     /// Run the pipeline in a blocking manner.
-    pub fn run_blocking(&mut self) -> Result<()> {
+    pub fn run_blocking(&self) -> Result<()> {
         let capture = AudioCapture::new()?;
         let rx = capture.start()?;
 
@@ -127,6 +140,9 @@ impl VoicePipeline {
                                 vad.reset();
                                 stream_buffer.clear();
 
+                                self.emit(VoiceEvent::WakeWord);
+                                self.emit(VoiceEvent::SpeechStarted);
+
                                 let url = self.config.backend_ws_url.clone();
                                 ws_client = rt.block_on(async {
                                     match VoiceWsClient::connect(&url).await {
@@ -159,6 +175,7 @@ impl VoicePipeline {
                                 Ok(r) => r,
                                 Err(e) => {
                                     warn!("VAD error: {}", e);
+                                    self.emit(VoiceEvent::Error(e.to_string()));
                                     (1.0, false)
                                 }
                             };
@@ -207,6 +224,7 @@ impl VoicePipeline {
                         ws_client = None;
                         wake.reset();
                         state = PipelineState::Idle;
+                        self.emit(VoiceEvent::SpeechEnded);
                         info!("Returned to Idle. Listening for wake word.");
                     }
                 }
@@ -216,4 +234,15 @@ impl VoicePipeline {
         info!("Voice pipeline shutting down.");
         Ok(())
     }
+}
+
+/// Pipeline state machine (internal).
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum PipelineState {
+    /// Listening for wake word, discarding audio.
+    Idle,
+    /// Wake word detected — streaming audio to backend.
+    Streaming,
+    /// Silence detected — grace period before returning to Idle.
+    Closing,
 }

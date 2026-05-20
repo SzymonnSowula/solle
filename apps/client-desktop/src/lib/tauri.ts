@@ -15,3 +15,11 @@ export async function tauriClipboardWrite(text: string): Promise<void> {
 export async function tauriClipboardRead(): Promise<string> {
   return await invoke("clipboard_read") as string;
 }
+
+export async function startVoicePipeline(): Promise<void> {
+  await invoke("start_voice_pipeline");
+}
+
+export async function stopVoicePipeline(): Promise<void> {
+  await invoke("stop_voice_pipeline");
+}

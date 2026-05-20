@@ -1,11 +1,12 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import { listen } from '@tauri-apps/api/event';
   import Onboarding from './Onboarding.svelte';
   import Settings from './Settings.svelte';
   import ConfirmDialog from './ConfirmDialog.svelte';
   import ActionLog from './ActionLog.svelte';
   import { getOnboardingStatus, stt, tts, getNotifications } from './lib/api';
-  import { tauriOpenFolder, tauriOpenApp } from './lib/tauri';
+  import { tauriOpenFolder, tauriOpenApp, startVoicePipeline, stopVoicePipeline } from './lib/tauri';
 
   type Status = 'idle' | 'listening' | 'thinking' | 'speaking';
   type View = 'widget' | 'onboarding' | 'settings';
@@ -57,6 +58,7 @@
     connect();
     startNotificationPolling();
     startWaveform();
+    startVoicePipeline().catch(() => {});
 
     const keyDownHandler = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.code === 'Space') {
@@ -78,12 +80,31 @@
     window.addEventListener('keydown', keyDownHandler);
     window.addEventListener('keyup', keyUpHandler);
     window.addEventListener('onboarding-complete', () => { view = 'widget'; });
+
+    let unlistenWake: (() => void) | null = null;
+    let unlistenEnd: (() => void) | null = null;
+
+    listen('wake-word-detected', () => {
+      status = 'listening';
+      message = 'Słucham...';
+      interimText = '';
+      card = null;
+    }).then((fn) => { unlistenWake = fn; });
+
+    listen('speech-ended', () => {
+      status = 'idle';
+      message = 'Volle gotowa. Wciśnij Spację i mów.';
+    }).then((fn) => { unlistenEnd = fn; });
+
     return () => {
       window.removeEventListener('keydown', keyDownHandler);
       window.removeEventListener('keyup', keyUpHandler);
       cleanupRecording();
       stopNotificationPolling();
+      stopVoicePipeline().catch(() => {});
       if (animFrame) cancelAnimationFrame(animFrame);
+      if (unlistenWake) unlistenWake();
+      if (unlistenEnd) unlistenEnd();
     };
   });
 

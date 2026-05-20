@@ -17,6 +17,8 @@ serde_json = "1"
 log = "0.4"
 arboard = "3"
 tauri-plugin-notification = "2.3.3"
+volle-voice-runtime = { path = "../../../packages/voice-runtime" }
+crossbeam-channel = "0.5"
 
 [features]
 default = ["custom-protocol"]
