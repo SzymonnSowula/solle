@@ -75,3 +75,52 @@ pytest tests/ -v
 4. **Phase 4**: Vision + OCR ("co widzisz na ekranie")
 5. **Phase 5**: Real integrations (Shopify API, Allegro, Baselinker) + alert engine
 6. **Phase 6**: Windows installer + CI/CD + tray icon polish
+
+## Building Windows Installer
+
+Requirements: Windows 10/11, Node 20+, Rust stable, WiX Toolset (for MSI).
+
+```powershell
+# 1. Install dependencies
+cd apps/client-desktop
+npm install
+cargo install tauri-cli --locked
+
+# 2. (Optional) Generate icon set
+# Place a 512x512 source image at assets/icon.png, then:
+python scripts/generate-icons.py assets/icon.png
+
+# 3. (Optional) Code signing – self-signed cert for dev testing
+.\scripts\create-selfsigned-cert.ps1
+# Copy the printed thumbprint into:
+#   apps/client-desktop/src-tauri/tauri.conf.json -> bundle.windows.certificateThumbprint
+
+# 4. Build
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "volle123"
+cargo tauri build
+```
+
+Outputs:
+- `src-tauri/target/release/bundle/msi/Volle_*.msi`
+- `src-tauri/target/release/bundle/nsis/Volle_*-setup.exe`
+
+### CI / Release
+
+Push a tag `v*.*.*` to trigger the Release workflow. It builds both MSI and NSIS
+artifacts and attaches them to the GitHub Release automatically.
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+### Production code signing
+
+For production, purchase a code signing certificate (e.g., from Sectigo, DigiCert,
+or a trusted CA). Then add these secrets to your GitHub repository:
+
+- `WINDOWS_CERTIFICATE` — Base64-encoded `.pfx` file
+- `WINDOWS_CERTIFICATE_PASSWORD` — PFX password
+
+Uncomment the signing steps in `.github/workflows/release.yml`.
+

@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/client-desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/client-desktop/package-lock.json
+
+      - name: Set up Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Install tauri-cli
+        run: cargo install tauri-cli --locked
+
+      # Optional: import code signing certificate from repository secrets.
+      # Uncomment and configure the following steps if you have a real cert:
+      #
+      # - name: Import certificate
+      #   shell: powershell
+      #   run: |
+      #     $bytes = [Convert]::FromBase64String("${{ secrets.WINDOWS_CERTIFICATE }}")
+      #     [IO.File]::WriteAllBytes("certificate.pfx", $bytes)
+      # - name: Build signed Tauri app
+      #   env:
+      #     WINDOWS_CERTIFICATE_PATH: "certificate.pfx"
+      #     WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+      #   run: cargo tauri build
+
+      - name: Build Tauri app
+        run: cargo tauri build
+
+      - name: Upload MSI to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: apps/client-desktop/src-tauri/target/release/bundle/msi/Volle_0.1.0_x64_en-US.msi
+          asset_name: Volle_0.1.0_x64_en-US.msi
+          asset_content_type: application/x-msi
+
+      - name: Upload NSIS to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: apps/client-desktop/src-tauri/target/release/bundle/nsis/Volle_0.1.0_x64-setup.exe
+          asset_name: Volle_0.1.0_x64-setup.exe
+          asset_content_type: application/x-msdownload
